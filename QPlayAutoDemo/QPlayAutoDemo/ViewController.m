@@ -13,9 +13,6 @@
 #define ID_GO_BACK @"GO_BACK"
 #define ID_SEARCH @"SEARCH"
 
-static NSString * const App_ID = @"";//QQ音乐申请的
-static NSString * const App_PrivateKey = @"";//RSA私钥
-
 @interface ViewController ()<QPlayAutoSDKDelegate,UITableViewDelegate,UITableViewDataSource>
 
 @property (nonatomic,strong) QPlayAutoListItem *rootItem;
@@ -26,7 +23,6 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 @property (nonatomic,strong) NSMutableArray<QPlayAutoListItem*> *pathStack;
 @property (nonatomic,strong) NSMutableDictionary<NSString*,UIImage*> *imageCache;
 @property (nonatomic,strong) NSTimer *progressTimer;
-@property (nonatomic,assign) BOOL isConnected;
 @property (nonatomic,assign) NSInteger currentProgress;
 @property (nonatomic,assign) QPlayAutoPlayMode currentPlayMode;
 @property (nonatomic,assign) BOOL isLove;
@@ -36,7 +32,7 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 
 @property (weak, nonatomic) IBOutlet UIButton *likeButtohn;
 @property (nonatomic,strong) UISegmentedControl       *assenceSegmentedControl;
-
+@property (nonatomic,strong) UIButton *reconnectButton;
 
 
 @end
@@ -46,16 +42,7 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 - (void)viewDidLoad {
     [super viewDidLoad];
     // Do any additional setup after loading the view, typically from a nib.
-    QPlayAutoAppInfo *appInfo = [[QPlayAutoAppInfo alloc] init];
-    appInfo.deviceId = @"qplayauto123";
-    appInfo.scheme = @"qplayautodemo://";
-    appInfo.brand = @"QQMusic";
-    appInfo.name = @"QPlayAutoDemo";
-    appInfo.bundleId = @"com.tencent.QPlayAutoDemo";
-    appInfo.appId = App_ID;
-    appInfo.secretKey = App_PrivateKey;
-    appInfo.deviceType = APP_DEVICE_TYPE;
-    [QPlayAutoSDK registerApp:appInfo delegate:self];
+    [QPlayAutoSDK setDelegate:self];
     [self.tableview registerClass:[UITableViewCell class] forCellReuseIdentifier:@"qplayautocell"];
     self.tableview.delegate = self;
     self.tableview.dataSource = self;
@@ -65,6 +52,26 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
     [self setupUI];
 }
 
+- (void)viewDidAppear:(BOOL)animated
+{
+    [super viewDidAppear:animated];
+    
+    if([QPlayAutoSDK isConnected])
+    {
+        [self onConnected];
+    }
+    else
+    {
+        [self.btnConnect setTitle:@"开始连接" forState:UIControlStateNormal];
+    }
+}
+
+- (void)viewDidLayoutSubviews
+{
+    [super viewDidLayoutSubviews];
+    _reconnectButton.layer.cornerRadius = _reconnectButton.frame.size.height/2.0;
+}
+
 - (void)setupUI {
     _assenceSegmentedControl = [[UISegmentedControl alloc] initWithItems:@[@"整首",@"高潮"]];
     _assenceSegmentedControl.selectedSegmentIndex = 0;
@@ -72,9 +79,24 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
     _assenceSegmentedControl.translatesAutoresizingMaskIntoConstraints = NO;
     [self.view addSubview:_assenceSegmentedControl];
     
+    _reconnectButton = [UIButton buttonWithType:UIButtonTypeCustom];
+    [_reconnectButton setTitle:@"重连" forState:UIControlStateNormal];
+    _reconnectButton.titleLabel.font = [UIFont systemFontOfSize:15];
+    [_reconnectButton setTitleColor:UIColor.blackColor forState:UIControlStateNormal];
+    _reconnectButton.backgroundColor = UIColor.whiteColor;
+    _reconnectButton.translatesAutoresizingMaskIntoConstraints = NO;
+    [_reconnectButton addTarget:self action:@selector(reconnectButtonPressed) forControlEvents:UIControlEventTouchUpInside];
+    [self.view addSubview:_reconnectButton];
+    
     NSLayoutConstraint *a = [NSLayoutConstraint constraintWithItem:_assenceSegmentedControl attribute:NSLayoutAttributeTrailing relatedBy:NSLayoutRelationEqual toItem:self.view attribute:NSLayoutAttributeTrailing multiplier:1 constant:-20];
     NSLayoutConstraint *b = [NSLayoutConstraint constraintWithItem:_assenceSegmentedControl attribute:NSLayoutAttributeBottom relatedBy:NSLayoutRelationEqual toItem:_likeButtohn attribute:NSLayoutAttributeTop multiplier:1 constant:-15];
     [NSLayoutConstraint activateConstraints:@[a,b]];
+    
+    NSLayoutConstraint *c = [NSLayoutConstraint constraintWithItem:_reconnectButton attribute:NSLayoutAttributeCenterY relatedBy:NSLayoutRelationEqual toItem:_btnConnect attribute:NSLayoutAttributeCenterY multiplier:1 constant:0];
+    NSLayoutConstraint *d = [NSLayoutConstraint constraintWithItem:_reconnectButton attribute:NSLayoutAttributeLeading relatedBy:NSLayoutRelationEqual toItem:_btnConnect attribute:NSLayoutAttributeTrailing multiplier:1 constant:30];
+    NSLayoutConstraint *e = [NSLayoutConstraint constraintWithItem:_reconnectButton attribute:NSLayoutAttributeWidth relatedBy:NSLayoutRelationEqual toItem:_btnConnect attribute:NSLayoutAttributeWidth multiplier:1 constant:0];
+    NSLayoutConstraint *f = [NSLayoutConstraint constraintWithItem:_reconnectButton attribute:NSLayoutAttributeHeight relatedBy:NSLayoutRelationEqual toItem:_btnConnect attribute:NSLayoutAttributeHeight multiplier:1 constant:0];
+    [NSLayoutConstraint activateConstraints:@[c,d,e,f]];
 }
 
 - (void)assenceSegmentedControlChanged:(UISegmentedControl*)sender {
@@ -110,28 +132,40 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
     }
 }
 
+#pragma mark - Actions
+
+- (void)reconnectButtonPressed {
+    [QPlayAutoSDK reconnectWithTimeout:3 completion:^(BOOL success, NSDictionary *dict) {
+        if(success)
+        {
+            [self showErrorCodeAlert:@"重连成功了😊"];
+        }
+        else
+        {
+            NSString *info = [NSString stringWithFormat:@"重连失败了😭 \n %@",[dict objectForKey:@"info"]];
+            [self showErrorCodeAlert:info];
+        }
+    }];
+}
+
 - (IBAction)onClickStart:(id)sender {
-    if([QPlayAutoSDK isStarted])
+    if([QPlayAutoSDK isConnected])
     {
         [QPlayAutoSDK stop];
         self.currentItem = nil;
         self.currentSong = nil;
+        [self.btnConnect setTitle:@"停止连接" forState:UIControlStateNormal];
         [self.tableview reloadData];
-        [self.btnConnect setTitle:@"开始连接" forState:UIControlStateNormal];
-        self.isConnected = NO;
     }
     else
     {
-        [QPlayAutoSDK activeQQMusicApp];
-        [QPlayAutoSDK start];
-        [self.btnConnect setTitle:@"停止连接" forState:UIControlStateNormal];
-        self.isConnected = NO;
+        [QPlayAutoSDK connect];
     }
     
 }
 
 - (IBAction)onClickPlayPause:(id)sender {
-    if(self.isConnected==NO)
+    if(QPlayAutoSDK.isConnected==NO)
         return;
     if(self.playState == QPlayAutoPlayState_Playing)
     {
@@ -149,7 +183,7 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 }
 
 - (IBAction)onClickPlayPrev:(id)sender {
-    if(self.isConnected==NO)
+    if(QPlayAutoSDK.isConnected==NO)
         return;
     [QPlayAutoSDK playerPlayPrev:^(BOOL success, NSDictionary *dict) {
         if (!success)
@@ -160,7 +194,7 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 }
 
 - (IBAction)onClickPlayNext:(id)sender {
-    if(self.isConnected==NO)
+    if(QPlayAutoSDK.isConnected==NO)
         return;
     [QPlayAutoSDK playerPlayNext:^(BOOL success, NSDictionary *dict) {
         if (!success)
@@ -171,7 +205,7 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 }
 
 - (IBAction)onClickPlayMode:(id)sender {
-    if(self.isConnected==NO)
+    if(QPlayAutoSDK.isConnected==NO)
         return;
     QPlayAutoPlayMode newMode;
     switch (self.currentPlayMode) {
@@ -196,7 +230,7 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 }
 
 - (IBAction)onClickLove:(id)sender {
-    if(self.isConnected==NO || self.currentSong==nil)
+    if(QPlayAutoSDK.isConnected==NO || self.currentSong==nil)
         return;
     [QPlayAutoSDK setFavoriteState:!self.isLove songId:self.currentSong.ID callback:^(BOOL success, NSDictionary *dict) {
         NSLog(@"setFavoriteState compled:%d",(int)success);
@@ -209,7 +243,7 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 }
 
 - (IBAction)onSliderSeek:(id)sender {
-    if(self.isConnected==NO || self.currentSong==nil)
+    if(QPlayAutoSDK.isConnected==NO || self.currentSong==nil)
         return;
     float newPos = self.progressSlider.value;
     [QPlayAutoSDK playerSeek:(NSInteger)newPos];
@@ -222,7 +256,7 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
                                                          handler:^(UIAlertAction* action)
                                    
                                    {
-                                       if(self.isConnected==NO)
+                                       if(QPlayAutoSDK.isConnected==NO)
                                            return;
                                        [self resetContent];
                                        [self requestContent:self.rootItem pageIndex:0 pageSize:NormalPageSize];
@@ -353,7 +387,7 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 
 - (void)updateCurrentSongUI
 {
-    if(self.isConnected==NO || self.currentSong==nil)
+    if(QPlayAutoSDK.isConnected==NO || self.currentSong==nil)
         return;
     self.progressSlider.maximumValue = (float)self.currentSong.Duration;
     self.songTitleLabel.text = self.currentSong.Name;
@@ -416,7 +450,7 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 
 - (void)onUpdateProgress
 {
-    if(self.isConnected==NO)
+    if(QPlayAutoSDK.isConnected==NO)
     {
         [self stopProgressTimer];
         return;
@@ -449,31 +483,31 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 }
 
 #pragma mark SDK交互
-
-
 - (void)onConnected
 {
     [self setLog:@"连接成功"];
-    self.isConnected = YES;
     [self resetContent];
     
     [self syncPlayInfo];
     [self syncPlayMode];
-//    [self requestContent:self.rootItem pageIndex:0 pageSize:NormalPageSize];
     [self requestOpenIDAuth];
+    [self.btnConnect setTitle:@"停止连接" forState:UIControlStateNormal];
+    [self.tableview reloadData];
 }
 
 - (void)onDisconnect
 {
     [self setLog:@"连接断开"];
-    self.isConnected = NO;
     [self stopProgressTimer];
+    self.currentItem=nil;
+    self.currentSong = nil;
+    [self.tableview reloadData];
     [self.btnConnect setTitle:@"开始连接" forState:UIControlStateNormal];
 }
 
 - (void)syncPlayInfo
 {
-    if(self.isConnected==NO)
+    if(QPlayAutoSDK.isConnected==NO)
         return;
     [QPlayAutoSDK getCurrentPlayInfo:^(BOOL success, NSDictionary *dataDict) {
         QPlayAutoPlayState playState = [[dataDict objectForKey:kQPlayAutoArgument_State] unsignedIntegerValue];
@@ -486,7 +520,7 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 
 - (void)syncFavState
 {
-    if(self.isConnected==NO || self.currentSong==nil)
+    if(QPlayAutoSDK.isConnected==NO || self.currentSong==nil)
         return;
     //收藏状态
     [QPlayAutoSDK queryFavoriteState:self.currentSong.ID calllback:^(BOOL success, NSDictionary *dict) {
@@ -530,7 +564,7 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 
 - (void)requestContent:(QPlayAutoListItem*)parentItem pageIndex:(NSUInteger)pageIndex pageSize:(NSUInteger)pageSize
 {
-    if(self.isConnected==NO)
+    if(QPlayAutoSDK.isConnected==NO)
         return;
     [self setLog:[NSString stringWithFormat:@"requestContent:%@ %@",parentItem.Name,parentItem.ID]];
     [QPlayAutoSDK getDataItems:parentItem.ID
@@ -587,7 +621,7 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 
 - (void)requestOpenIDAuth
 {
-    if(self.isConnected==NO)
+    if(QPlayAutoSDK.isConnected==NO)
         return;
     [QPlayAutoSDK getOpenIdAuth:^(BOOL success, NSDictionary *dict) {
         if (success)
@@ -606,7 +640,7 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 
 - (void)requestSearch
 {
-    if(self.isConnected==NO)
+    if(QPlayAutoSDK.isConnected==NO)
         return;
     UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"搜索" message:@"请输入关键词" preferredStyle:UIAlertControllerStyleAlert];
     [alertController addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
@@ -773,8 +807,7 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 }
 
 
-#pragma mark QPlayAutoConnectStateDelegate
-
+#pragma mark ---QPlayAutoConnectStateDelegate---
 - (void)onQPlayAutoConnectStateChanged:(QPlayAutoConnectState)newState
 {
     dispatch_async(dispatch_get_main_queue(), ^{
@@ -824,9 +857,11 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 
 - (void)showErrorCodeAlert:(NSString *)content
 {
-    UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"" message:content preferredStyle:UIAlertControllerStyleAlert];
-    [alert addAction:[UIAlertAction actionWithTitle:@"知道了" style:UIAlertActionStyleCancel handler:nil]];
-    [self presentViewController:alert animated:YES completion:nil];
+    dispatch_async(dispatch_get_main_queue(), ^{
+        UIAlertController *alert = [UIAlertController alertControllerWithTitle:@"" message:content preferredStyle:UIAlertControllerStyleAlert];
+        [alert addAction:[UIAlertAction actionWithTitle:@"知道了" style:UIAlertActionStyleCancel handler:nil]];
+        [self presentViewController:alert animated:YES completion:nil];
+    });
 }
 
 @end

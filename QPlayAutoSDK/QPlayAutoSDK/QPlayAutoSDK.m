@@ -44,9 +44,22 @@ static NSString * const QQMusic_PubKey = @"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBg
     return g_dQPlayAutoSDK;
 }
 
-+ (void)registerApp:(QPlayAutoAppInfo*)appInfo delegate:(id<QPlayAutoSDKDelegate>)delegate
++ (void)registerAppWithName:(NSString *)name brand:(NSString *)brand deviceId:(NSString *)deviceId scheme:(NSString *)scheme appId:(NSString *)appId secretKey:(NSString *)secretKey bundleId:(NSString *)bundleId
 {
+    QPlayAutoAppInfo *appInfo = [[QPlayAutoAppInfo alloc] init];
+    appInfo.deviceId = deviceId;
+    appInfo.scheme = scheme;
+    appInfo.brand = brand;
+    appInfo.name = name;
+    appInfo.bundleId = bundleId;
+    appInfo.appId = appId;
+    appInfo.secretKey = secretKey;
+    appInfo.deviceType = APP_DEVICE_TYPE;
     [QPlayAutoManager sharedInstance].appInfo = appInfo;
+}
+
++ (void)setDelegate:(id<QPlayAutoSDKDelegate>)delegate 
+{
     [QPlayAutoSDK sharedInstance].delegate = delegate;
 }
 
@@ -106,7 +119,6 @@ static NSString * const QQMusic_PubKey = @"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBg
                             @"appid":appInfo.appId,
                             @"devicetype":@(appInfo.deviceType),
                             @"deviceip":localIP,
-                            @"deviceid":appInfo.deviceId,
                             @"packagename":appInfo.bundleId,
                             @"dataport":@(LocalDataPort),
                             @"commandport":@(LocalCommandPort),
@@ -119,17 +131,42 @@ static NSString * const QQMusic_PubKey = @"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBg
     return YES;
 }
 
-
-+ (void)start
++ (void)connect
 {
-    [[QPlayAutoSDK sharedInstance] innerStart];
+    if(QPlayAutoManager.sharedInstance.isConnected == NO)
+    {
+        if([[QPlayAutoSDK sharedInstance] canConnect])
+        {
+            [QPlayAutoSDK activeQQMusicApp];
+            [[QPlayAutoManager sharedInstance] connect];
+        }
+    }
+    else
+    {
+        NSLog(@"[IPC] 已经是连接状态");
+    }
 }
 
-- (void)innerStart
++ (void)reconnectWithTimeout:(NSTimeInterval)timeout completion:(QPlayAutoRequestFinishBlock)completion
 {
-    if (NO == [QPlayAutoManager sharedInstance].isStarted  && [QPlayAutoManager sharedInstance].appInfo!=nil)
+    if(QPlayAutoManager.sharedInstance.isConnected == NO)
     {
-        [[QPlayAutoManager sharedInstance] start:[QPlayAutoManager sharedInstance].appInfo];
+        if([[QPlayAutoSDK sharedInstance] canConnect])
+        {
+            [QPlayAutoManager.sharedInstance reconnectWithCallback:completion timeout:timeout];
+        }
+    }
+    else
+    {
+        NSLog(@"[IPC] 已经是连接状态");
+    }
+}
+
+- (BOOL)canConnect
+{
+    if([QPlayAutoManager sharedInstance].isStarted == NO)
+    {
+        [[NSNotificationCenter defaultCenter] removeObserver:self];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onNotifyConnected:) name:kNotifyConnectSuccess object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onNotifyDisconnect:) name:kNotifyDisconnect object:nil];
         
@@ -137,7 +174,9 @@ static NSString * const QQMusic_PubKey = @"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBg
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onSongFavoriteStateChange:) name:kNotifySongFavariteStateChange object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onPlayModeChange:) name:kNotifyPlayModeChange object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onPlayPausedByTimeoff) name:kNotifyPlayPausedByTimeOff object:nil];
+        return YES;
     }
+    return NO;
 }
 
 + (void)stop
@@ -151,9 +190,9 @@ static NSString * const QQMusic_PubKey = @"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBg
     [[QPlayAutoManager sharedInstance] stop];
 }
 
-+ (BOOL)isStarted
++ (BOOL)isConnected
 {
-    return [QPlayAutoManager sharedInstance].isStarted;
+    return [QPlayAutoManager sharedInstance].isConnected;
 }
 
 + (NSInteger)getDataItems:(NSString*)parentID

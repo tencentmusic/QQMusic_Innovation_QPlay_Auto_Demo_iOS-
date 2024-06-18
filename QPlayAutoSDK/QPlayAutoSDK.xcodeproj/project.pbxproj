@@ -6,6 +6,20 @@
 	objectVersion = 50;
 	objects = {
 
+/* Begin PBXAggregateTarget section */
+		30ACE9DB2C201EF10006884B /* BuildSDK */ = {
+			isa = PBXAggregateTarget;
+			buildConfigurationList = 30ACE9DE2C201EF10006884B /* Build configuration list for PBXAggregateTarget "BuildSDK" */;
+			buildPhases = (
+				30ACE9DF2C201EF90006884B /* ShellScript */,
+			);
+			dependencies = (
+			);
+			name = BuildSDK;
+			productName = BuildSDK;
+		};
+/* End PBXAggregateTarget section */
+
 /* Begin PBXBuildFile section */
 		9D1664BC21F6B43F00F151B4 /* QMRSA.m in Sources */ = {isa = PBXBuildFile; fileRef = 9D1664BA21F6B43F00F151B4 /* QMRSA.m */; };
 		9D689DA7219FFF8800634F99 /* QPlayAutoDefine.h in Copy Files */ = {isa = PBXBuildFile; fileRef = 9D689DA6219FFF6E00634F99 /* QPlayAutoDefine.h */; };
@@ -196,6 +210,9 @@
 				LastUpgradeCheck = 1000;
 				ORGANIZATIONNAME = "腾讯音乐";
 				TargetAttributes = {
+					30ACE9DB2C201EF10006884B = {
+						CreatedOnToolsVersion = 15.0;
+					};
 					9DA98F6F219030C200247F22 = {
 						CreatedOnToolsVersion = 10.0;
 					};
@@ -214,9 +231,30 @@
 			projectRoot = "";
 			targets = (
 				9DA98F6F219030C200247F22 /* QPlayAutoSDK */,
+				30ACE9DB2C201EF10006884B /* BuildSDK */,
 			);
 		};
 /* End PBXProject section */
+
+/* Begin PBXShellScriptBuildPhase section */
+		30ACE9DF2C201EF90006884B /* ShellScript */ = {
+			isa = PBXShellScriptBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			inputFileListPaths = (
+			);
+			inputPaths = (
+			);
+			outputFileListPaths = (
+			);
+			outputPaths = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+			shellPath = /bin/sh;
+			shellScript = "if [ \"${ACTION}\" = \"build\" ]\nthen\n\n#要build的target名\ntarget_Name=${PROJECT_NAME}\n    echo \"target_Name=${target_Name}\"\n\n#build之后的文件夹路径\nbuild_DIR=${SRCROOT}/build\n    echo \"build_DIR=${build_DIR}\"\n\n#真机build生成的头文件的文件夹路径\nDEVICE_DIR_INCLUDE=${build_DIR}/Release-iphoneos/include\n    echo \"DEVICE_DIR_INCLUDE=${DEVICE_DIR_INCLUDE}\"\n\n#真机build生成的.a文件路径\nDEVICE_DIR_A=${build_DIR}/Release-iphoneos/lib${PROJECT_NAME}.a\n    echo \"DEVICE_DIR_A=${DEVICE_DIR_A}\"\n\n#模拟器build生成的.a文件路径\nSIMULATOR_DIR_A=${build_DIR}/Release-iphonesimulator/lib${PROJECT_NAME}.a\n    echo \"SIMULATOR_DIR_A=${SIMULATOR_DIR_A}\"\n\n#目标文件夹路径\nINSTALL_DIR=${SRCROOT}/Products/${PROJECT_NAME}\n    echo \"INSTALL_DIR=${INSTALL_DIR}\"\n\n#目标头文件文件夹路径\nINSTALL_DIR_Headers=${SRCROOT}/Products/${PROJECT_NAME}/Headers\n    echo \"INSTALL_DIR_Headers=${INSTALL_DIR_Headers}\"\n\n#目标.a路径\nINSTALL_DIR_A=${SRCROOT}/Products/${PROJECT_NAME}/lib${PROJECT_NAME}.a\n    echo \"INSTALL_DIR_A=${INSTALL_DIR_A}\"\n\n#判断build文件夹是否存在，存在则删除\nif [ -d \"${build_DIR}\" ]\nthen\nrm -rf \"${build_DIR}\"\nfi\n\n#判断目标文件夹是否存在，存在则删除该文件夹\nif [ -d \"${INSTALL_DIR}\" ]\nthen\nrm -rf \"${INSTALL_DIR}\"\nfi\n#创建目标文件夹\nmkdir -p \"${INSTALL_DIR}\"\n\n#build之前clean一下\nxcodebuild -target ${target_Name} clean\n\n#模拟器build\nxcodebuild -target ${target_Name} -configuration Release -sdk iphonesimulator -arch x86_64\n\n#真机build\nxcodebuild -target ${target_Name} -configuration Release -sdk iphoneos -arch arm64\n\n#复制头文件到目标文件夹\ncp -R \"${DEVICE_DIR_INCLUDE}\" \"${INSTALL_DIR_Headers}\"\n\n#合成模拟器和真机.a包\nlipo -create \"${DEVICE_DIR_A}\" \"${SIMULATOR_DIR_A}\" -output \"${INSTALL_DIR_A}\"\n\n#打开目标文件夹\nopen \"${INSTALL_DIR}\"\n\nfi\n";
+		};
+/* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
 		9DA98F6C219030C200247F22 /* Sources */ = {
@@ -242,6 +280,26 @@
 /* End PBXSourcesBuildPhase section */
 
 /* Begin XCBuildConfiguration section */
+		30ACE9DC2C201EF10006884B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 9UBE295H5P;
+				MACH_O_TYPE = staticlib;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Debug;
+		};
+		30ACE9DD2C201EF10006884B /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 9UBE295H5P;
+				MACH_O_TYPE = staticlib;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+			};
+			name = Release;
+		};
 		9DA98F77219030C200247F22 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -356,6 +414,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				MACH_O_TYPE = staticlib;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -367,6 +426,7 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				CODE_SIGN_STYLE = Automatic;
+				MACH_O_TYPE = staticlib;
 				OTHER_LDFLAGS = "-ObjC";
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SKIP_INSTALL = YES;
@@ -377,6 +437,15 @@
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		30ACE9DE2C201EF10006884B /* Build configuration list for PBXAggregateTarget "BuildSDK" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				30ACE9DC2C201EF10006884B /* Debug */,
+				30ACE9DD2C201EF10006884B /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		9DA98F6B219030C200247F22 /* Build configuration list for PBXProject "QPlayAutoSDK" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

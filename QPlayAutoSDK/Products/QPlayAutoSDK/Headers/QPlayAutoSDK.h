@@ -69,7 +69,7 @@
 /**
  开启QPlay
  */
-+ (void)connect;
++ (void)connectWithCompletion:(QPlayAutoRequestFinishBlock)completion;
 
 + (void)reconnectWithTimeout:(NSTimeInterval)timeout completion:(QPlayAutoRequestFinishBlock)completion;
 

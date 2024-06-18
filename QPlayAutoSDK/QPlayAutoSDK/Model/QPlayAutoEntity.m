@@ -87,6 +87,39 @@ NSString *const kQPlayAutoArgument_State = @"State";
 @end
 
 @implementation QPlayAutoAppInfo
+
+- (instancetype)initWithCoder:(NSCoder *)coder {
+    self = [super init];
+    if (self) {
+        self.deviceId = [coder decodeObjectForKey:@"deviceId"];
+        self.deviceType = [coder decodeIntegerForKey:@"deviceType"];
+        self.scheme = [coder decodeObjectForKey:@"scheme"];
+        self.brand = [coder decodeObjectForKey:@"brand"];
+        self.name = [coder decodeObjectForKey:@"name"];
+        self.appId = [coder decodeObjectForKey:@"appId"];
+        self.secretKey = [coder decodeObjectForKey:@"secretKey"];
+        self.bundleId = [coder decodeObjectForKey:@"bundleId"];
+        self.qmCommandPort = [coder decodeIntegerForKey:@"qmCommandPort"];
+        self.qmHost = [coder decodeObjectForKey:@"qmHost"];
+        self.lastConnectDate = [coder decodeObjectForKey:@"lastConnectDate"];
+    }
+    return self;
+}
+
+- (void)encodeWithCoder:(NSCoder *)coder {
+    [coder encodeObject:self.deviceId forKey:@"deviceId"];
+    [coder encodeInteger:self.deviceType forKey:@"deviceType"];
+    [coder encodeObject:self.scheme forKey:@"scheme"];
+    [coder encodeObject:self.brand forKey:@"brand"];
+    [coder encodeObject:self.name forKey:@"name"];
+    [coder encodeObject:self.appId forKey:@"appId"];
+    [coder encodeObject:self.secretKey forKey:@"secretKey"];
+    [coder encodeObject:self.bundleId forKey:@"bundleId"];
+    [coder encodeInteger:self.qmCommandPort forKey:@"qmCommandPort"];
+    [coder encodeObject:self.qmHost forKey:@"qmHost"];
+    [coder encodeObject:self.lastConnectDate forKey:@"lastConnectDate"];
+}
+
 @end
 
 @implementation QPlayAutoPlayInfo

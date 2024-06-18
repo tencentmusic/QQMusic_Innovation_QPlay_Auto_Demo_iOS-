@@ -7,7 +7,7 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
-		9D689DA5219FFD9100634F99 /* libQPlayAutoSDK.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 9D689DA4219FFD9100634F99 /* libQPlayAutoSDK.a */; };
+		30ACE9E82C2051410006884B /* libQPlayAutoSDK.a in Frameworks */ = {isa = PBXBuildFile; fileRef = 30ACE9E62C203AD00006884B /* libQPlayAutoSDK.a */; };
 		9DA98FC121903DD500247F22 /* AppDelegate.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DA98FC021903DD500247F22 /* AppDelegate.m */; };
 		9DA98FC421903DD500247F22 /* ViewController.m in Sources */ = {isa = PBXBuildFile; fileRef = 9DA98FC321903DD500247F22 /* ViewController.m */; };
 		9DA98FC721903DD500247F22 /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 9DA98FC521903DD500247F22 /* Main.storyboard */; };
@@ -17,8 +17,21 @@
 		9DA98FE321905AF300247F22 /* images.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 9DA98FE221905AF200247F22 /* images.xcassets */; };
 /* End PBXBuildFile section */
 
+/* Begin PBXCopyFilesBuildPhase section */
+		30ACE9DA2C201E6A0006884B /* Embed Frameworks */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 10;
+			files = (
+			);
+			name = "Embed Frameworks";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXCopyFilesBuildPhase section */
+
 /* Begin PBXFileReference section */
-		9D689DA4219FFD9100634F99 /* libQPlayAutoSDK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libQPlayAutoSDK.a; sourceTree = BUILT_PRODUCTS_DIR; };
+		30ACE9E62C203AD00006884B /* libQPlayAutoSDK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libQPlayAutoSDK.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		9DA98FBC21903DD500247F22 /* QPlayAutoDemo.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = QPlayAutoDemo.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		9DA98FBF21903DD500247F22 /* AppDelegate.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = AppDelegate.h; sourceTree = "<group>"; };
 		9DA98FC021903DD500247F22 /* AppDelegate.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = AppDelegate.m; sourceTree = "<group>"; };
@@ -29,9 +42,6 @@
 		9DA98FCB21903DD700247F22 /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		9DA98FCD21903DD700247F22 /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		9DA98FCE21903DD700247F22 /* main.m */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.objc; path = main.m; sourceTree = "<group>"; };
-		9DA98FDC21903FCB00247F22 /* libQPlayLinkSDK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libQPlayLinkSDK.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		9DA98FDE2190404F00247F22 /* libQPlayLinkSDK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libQPlayLinkSDK.a; sourceTree = BUILT_PRODUCTS_DIR; };
-		9DA98FE02190414700247F22 /* libQPlayLinkSDK.a */ = {isa = PBXFileReference; explicitFileType = archive.ar; path = libQPlayLinkSDK.a; sourceTree = BUILT_PRODUCTS_DIR; };
 		9DA98FE221905AF200247F22 /* images.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = images.xcassets; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
@@ -40,7 +50,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
-				9D689DA5219FFD9100634F99 /* libQPlayAutoSDK.a in Frameworks */,
+				30ACE9E82C2051410006884B /* libQPlayAutoSDK.a in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -84,10 +94,7 @@
 		9DA98FDB21903FCB00247F22 /* Frameworks */ = {
 			isa = PBXGroup;
 			children = (
-				9D689DA4219FFD9100634F99 /* libQPlayAutoSDK.a */,
-				9DA98FE02190414700247F22 /* libQPlayLinkSDK.a */,
-				9DA98FDE2190404F00247F22 /* libQPlayLinkSDK.a */,
-				9DA98FDC21903FCB00247F22 /* libQPlayLinkSDK.a */,
+				30ACE9E62C203AD00006884B /* libQPlayAutoSDK.a */,
 			);
 			name = Frameworks;
 			sourceTree = "<group>";
@@ -102,6 +109,7 @@
 				9DA98FB821903DD500247F22 /* Sources */,
 				9DA98FB921903DD500247F22 /* Frameworks */,
 				9DA98FBA21903DD500247F22 /* Resources */,
+				30ACE9DA2C201E6A0006884B /* Embed Frameworks */,
 			);
 			buildRules = (
 			);
@@ -310,9 +318,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Manual;
-				DEVELOPMENT_TEAM = 7YBRZSVLTA;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 9UBE295H5P;
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "$(SRCROOT)/QPlayAutoDemo/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -321,7 +329,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.tencent.QPlayAutoDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = ioscommon;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Debug;
@@ -330,9 +338,9 @@
 			isa = XCBuildConfiguration;
 			buildSettings = {
 				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
-				CODE_SIGN_IDENTITY = "iPhone Developer";
-				CODE_SIGN_STYLE = Manual;
-				DEVELOPMENT_TEAM = 7YBRZSVLTA;
+				CODE_SIGN_IDENTITY = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				DEVELOPMENT_TEAM = 9UBE295H5P;
 				HEADER_SEARCH_PATHS = "";
 				INFOPLIST_FILE = "$(SRCROOT)/QPlayAutoDemo/Info.plist";
 				LD_RUNPATH_SEARCH_PATHS = (
@@ -341,7 +349,7 @@
 				);
 				PRODUCT_BUNDLE_IDENTIFIER = com.tencent.QPlayAutoDemo;
 				PRODUCT_NAME = "$(TARGET_NAME)";
-				PROVISIONING_PROFILE_SPECIFIER = ioscommon;
+				PROVISIONING_PROFILE_SPECIFIER = "";
 				TARGETED_DEVICE_FAMILY = "1,2";
 			};
 			name = Release;

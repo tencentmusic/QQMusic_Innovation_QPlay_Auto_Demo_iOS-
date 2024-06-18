@@ -46,10 +46,11 @@ NSString *const kQPlayAutoCmd_PlaySeek = @"PlaySeek";
 NSString *const kQPlayAutoCmd_Heartbeat = @"Heartbeat";
 NSString *const kQPlayAutoCmd_CommInfos = @"CommInfos";
 NSString *const kQPlayAutoCmd_Auth = @"Auth";
+NSString *const kQPlayAutoCmd_Reconnect = @"Reconnect";
 
+NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectInfo";
 
 @interface QPlayAutoManager()<CommandSocketDelegate,DiscoverSocketDelegate,ResultSocketDelegate>
-
 
 @property (nonatomic,strong) DiscoverSocket *discoverSocket;
 @property (nonatomic,strong) HeartbeatSocket *heartbeatSocket;
@@ -59,15 +60,17 @@ NSString *const kQPlayAutoCmd_Auth = @"Auth";
 @property (nonatomic,strong) NSTimer *checkHeartbeatTimer;
 @property (nonatomic,assign) NSTimeInterval lastHeartbeatTime;
 
-
 @property (nonatomic,assign) int qmCommandPort;
 @property (nonatomic,assign) int qmResultPort;
 @property (nonatomic,strong) NSString *qmHost;
 
 @property (nonatomic,assign) NSInteger requestNo;
-@property (nonatomic, strong) NSMutableDictionary<NSString *,QPlayAutoRequestInfo *> *requestDic;
-
+@property (nonatomic,strong) NSMutableDictionary<NSString *,QPlayAutoRequestInfo *> *requestDic;
 @property (nonatomic,strong) QPlayAutoListItem *rootItem;
+
+@property (nonatomic,strong,nullable) QPlayAutoAppInfo *lastConnectAppInfo;
+@property (nonatomic,strong) dispatch_source_t timeoutTimer;
+@property (nonatomic,copy,nullable) QPlayAutoRequestFinishBlock reconnectBlock;
 
 @end
 
@@ -84,14 +87,37 @@ NSString *const kQPlayAutoCmd_Auth = @"Auth";
     return g_dQPlayAutoManager;
 }
 
-- (void)start:(QPlayAutoAppInfo*)appInfo
+#pragma mark - Getter & Setter
+- (void)setLastConnectAppInfo:(QPlayAutoAppInfo *)lastConnectAppInfo 
 {
-    self.appInfo = appInfo;
+    NSData *encodedAppInfo = [NSKeyedArchiver archivedDataWithRootObject:lastConnectAppInfo];
+    [[NSUserDefaults standardUserDefaults] setObject:encodedAppInfo forKey:kQPlayAutoInfo_LastConnectInfo];
+    [[NSUserDefaults standardUserDefaults] synchronize];
+}
+
+- (QPlayAutoAppInfo *)lastConnectAppInfo 
+{
+    NSData *encodedAppInfo = [[NSUserDefaults standardUserDefaults] objectForKey:kQPlayAutoInfo_LastConnectInfo];
+    if (encodedAppInfo)
+    {
+        QPlayAutoAppInfo *appInfo = [NSKeyedUnarchiver unarchiveObjectWithData:encodedAppInfo];
+        return appInfo;
+    }
+    return nil;
+}
+
+- (void)connect
+{
+    if(self.appInfo == nil)
+    {
+        NSLog(@"[IPC] 注册信息为空");
+        return;
+    }
     if (self.appInfo.deviceType!=APP_DEVICE_TYPE)
     {
         //App方式的不再用发广播，直接使用scheme拉起来连接
         self.discoverSocket = [[DiscoverSocket alloc] init];
-        self.discoverSocket.appInfo = appInfo;
+        self.discoverSocket.appInfo = self.appInfo;
         [self.discoverSocket start];
         self.discoverSocket.delegate = self;
     }
@@ -106,6 +132,56 @@ NSString *const kQPlayAutoCmd_Auth = @"Auth";
     
     self.isConnected = NO;
     self.isStarted = YES;
+}
+
+- (void)reconnectWithCallback:(QPlayAutoRequestFinishBlock)block timeout:(NSTimeInterval)timeout
+{
+    if(self.lastConnectAppInfo == nil)
+    {
+        block(NO,@{@"info":@"不重连(无上次连接成功记录)"});
+        return;
+    }
+    if([self.lastConnectAppInfo.appId isEqualToString:self.appInfo.appId] == NO)
+    {
+        self.lastConnectAppInfo = nil;
+        block(NO,@{@"info":@"不重连(appId不一样)"});
+        return;
+    }
+    if([self isMoreThan24HoursWihtDate:self.lastConnectAppInfo.lastConnectDate date2:[NSDate date]])
+    {
+        self.lastConnectAppInfo = nil;
+        block(NO,@{@"info":@"不重连(超过了24小时)"});
+        return;
+    }
+    self.isConnected = NO;
+    self.isStarted = YES;
+    self.reconnectBlock = block;
+    [self innerStop];
+    self.appInfo = self.lastConnectAppInfo;
+    self.commandSocket = [[CommandSocket alloc] init];
+    self.commandSocket.destIP = self.appInfo.qmHost;
+    self.commandSocket.destPort = (int)self.appInfo.qmCommandPort;
+    [self.commandSocket start];
+    self.commandSocket.delegate = self;
+    
+    self.dataSocket = [[DataSocket alloc] init];
+    [self.dataSocket start];
+    self.requestDic = [[NSMutableDictionary alloc] init];
+    
+    QPlayAutoRequestInfo *req = [[QPlayAutoRequestInfo alloc] initWithRequestNO:[self getRequestId] finishBlock:block];
+    NSString *msg = [NSString stringWithFormat:@"{\"RequestID\":%ld,\"Request\":\"%@\",\"Arguments\":{\"appid\":\"%@\",\"devicebrand\":\"%@\",\"deviceip\":\"%@\",\"dataport\":\"%d\",\"commandport\":\"%d\",\"resultport\":\"%d\",\"packagename\":\"%@\",\"deviceid\":\"%@\",\"devicetype\":\"%d\",\"devicename\":\"%@\"}}\r\n",(long)req.requestNo,kQPlayAutoCmd_Reconnect,self.appInfo.appId,self.appInfo.brand,self.appInfo.qmHost,LocalDataPort,LocalCommandPort,LocalResultPort,self.appInfo.bundleId,self.appInfo.deviceId,APP_DEVICE_TYPE,self.appInfo.name];
+    [self.commandSocket sendMsg:msg];
+    
+    dispatch_time_t timeoutTime = dispatch_time(DISPATCH_TIME_NOW, (int64_t)(timeout * NSEC_PER_SEC));
+    self.timeoutTimer = dispatch_source_create(DISPATCH_SOURCE_TYPE_TIMER, 0, 0, dispatch_get_main_queue());
+    dispatch_source_set_event_handler(self.timeoutTimer, ^{
+        [self innerStop]; // 停止所有操作
+        block(NO, @{@"info": @"重连失败(超时)"});
+        dispatch_source_cancel(self.timeoutTimer);
+        self.reconnectBlock = nil;
+    });
+    dispatch_source_set_timer(self.timeoutTimer, timeoutTime, DISPATCH_TIME_FOREVER, 0);
+    dispatch_resume(self.timeoutTimer);
 }
 
 - (void)stop
@@ -178,12 +254,12 @@ NSString *const kQPlayAutoCmd_Auth = @"Auth";
 - (void)onDisconnect
 {
     self.isConnected = NO;
+    self.isStarted = NO;
     [self stopCheckHeartbeatTimer];
     [[NSNotificationCenter defaultCenter] postNotificationName:kNotifyDisconnect object:nil];
 }
 
-#pragma mark Commands
-
+#pragma mark --- Commands ---
 //查询移动设备信息
 - (void)requestMobileDeviceInfos:(QPlayAutoRequestFinishBlock)block
 {
@@ -410,7 +486,12 @@ NSString *const kQPlayAutoCmd_Auth = @"Auth";
     return req.requestNo;
 }
 
-#pragma mark Helpers
+#pragma mark ---Helpers---
+-(BOOL)isMoreThan24HoursWihtDate:(NSDate *)date1 date2:(NSDate *)date2
+{
+    NSTimeInterval interval = [date2 timeIntervalSinceDate:date1];
+    return interval > (60 * 60 * 24);
+}
 
 //获取请求ID
 - (NSInteger)getRequestId
@@ -453,29 +534,43 @@ NSString *const kQPlayAutoCmd_Auth = @"Auth";
 - (void)onCommandSocket:(CommandSocket*)socket recvData:(NSData*)data
 {
     NSError *error = nil;
-    NSDictionary *cmdDict =  [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:&error];
-    NSString *cmd = [cmdDict objectForKey:@"Request"];
-    NSInteger reqId = [[cmdDict objectForKey:@"RequestID"] integerValue];
+    NSDictionary *cmdDict = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:&error];
+    NSString *cmd = [QQMusicUtils getStringFromJSON:cmdDict forKey:@"Request"];
+    NSString *reqIdStr = [QQMusicUtils getStringFromJSON:cmdDict forKey:@"RequestID"];
     
     if ([cmd isEqualToString:kQPlayAutoCmd_Heartbeat])
     {
-        //心跳
         self.lastHeartbeatTime = [NSDate timeIntervalSinceReferenceDate];
         return;
     }
     
-    NSLog(@"Recv command:%@",cmdDict);
-    
-    if ([cmd isEqualToString:kQPlayAutoCmd_CommInfos])
+    if ([cmd isEqualToString:kQPlayAutoCmd_CommInfos] || [cmd isEqualToString:kQPlayAutoCmd_Reconnect])
     {
         //QQ音乐的连接信息
+        if(self.timeoutTimer)
+        {
+            dispatch_source_cancel(self.timeoutTimer);
+            self.timeoutTimer = nil;
+        }
         NSDictionary *argsDict = [cmdDict objectForKey:@"Arguments"];
         self.qmCommandPort = [[argsDict objectForKey:@"CommandPort"] intValue];
         self.qmResultPort = [[argsDict objectForKey:@"ResultPort"] intValue];
         self.qmHost = self.commandSocket.destIP;
         self.commandSocket.destPort = self.qmCommandPort;
+        self.appInfo.qmCommandPort = self.qmCommandPort;
+        self.appInfo.qmHost = self.commandSocket.destIP;
+        self.appInfo.lastConnectDate = [NSDate date];
+        self.lastConnectAppInfo = self.appInfo;
         [self onConnectSuccess];
         
+        if([cmd isEqualToString:kQPlayAutoCmd_Reconnect])
+        {
+            if(self.reconnectBlock)
+            {
+                self.reconnectBlock(YES,@{});
+                self.reconnectBlock = nil;
+            }
+        }
     }
     else if ([cmd isEqualToString:kQPlayAutoCmd_DeviceInfos])
     {
@@ -483,7 +578,7 @@ NSString *const kQPlayAutoCmd_Auth = @"Auth";
         NSString *osVer = [[UIDevice currentDevice] systemVersion];
         NSDictionary *appInfoDic = [[NSBundle mainBundle] infoDictionary];
         NSString *appVersion = [appInfoDic objectForKey:@"CFBundleShortVersionString"];
-        NSString *msg = [NSString stringWithFormat:@"{\"RequestID\":%ld,\"DeviceInfos\":{\"Brand\":\"%@\",\"Models\":\"%@\",\"OS\":\"%@\",\" OSVer\":\"%@\",\"AppVer\":\"%@\",\"PCMBuf\":%d, \"PICBuf\":%d, \"LRCBuf\": %d, \"Network\":1, \"Ver\":\"1.2\"}}\r\n",(long)reqId,DeviceBrand,DeviceModel,DeviceOS,osVer,appVersion,PCMBufSize,PicBufSize,LrcBufSize];
+        NSString *msg = [NSString stringWithFormat:@"{\"RequestID\":\"%@\",\"DeviceInfos\":{\"Brand\":\"%@\",\"Models\":\"%@\",\"OS\":\"%@\",\" OSVer\":\"%@\",\"AppVer\":\"%@\",\"PCMBuf\":%d, \"PICBuf\":%d, \"LRCBuf\": %d, \"Network\":1, \"Ver\":\"1.2\"}}\r\n",reqIdStr,DeviceBrand,DeviceModel,DeviceOS,osVer,appVersion,PCMBufSize,PicBufSize,LrcBufSize];
         [self.resultSocket sendMsg:msg];
         
     }
@@ -498,8 +593,7 @@ NSString *const kQPlayAutoCmd_Auth = @"Auth";
 - (void)onResultSocket:(ResultSocket*)socket recvData:(NSData*)data
 {
     NSError *error = nil;
-    NSDictionary *resultDict =  [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:&error];
-    
+    NSDictionary *resultDict = [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingMutableLeaves error:&error];
     NSString *eventName = [resultDict objectForKey:@"Event"];
     if (eventName.length>0)
     {
@@ -526,20 +620,16 @@ NSString *const kQPlayAutoCmd_Auth = @"Auth";
         return;
     }
     
-    
     id key  =  [[resultDict allKeys] firstObject];
     if ([key isKindOfClass:[NSString class]] == NO)
     {
         return;
     }
-    
     NSString *strKey = key;
     NSDictionary *contentDict = [resultDict objectForKey:key];
     NSObject *err = [contentDict objectForKey:@"Error"];
-
     NSString *reqIdStr = [NSString stringWithFormat:@"%ld",(long)[[resultDict objectForKey:@"RequestID"] integerValue]];
     
-   
     QPlayAutoRequestInfo * req = [self.requestDic objectForKey:reqIdStr];
     if(req)
     {
@@ -557,7 +647,6 @@ NSString *const kQPlayAutoCmd_Auth = @"Auth";
     {
         NSLog(@"注意了！！！没有找到对应的请求");
     }
-    
 }
 
 - (int)changeWithValue:(id)value

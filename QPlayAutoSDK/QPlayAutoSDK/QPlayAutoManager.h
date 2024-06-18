@@ -13,15 +13,14 @@ NS_ASSUME_NONNULL_BEGIN
 
 @interface QPlayAutoManager : NSObject
 
-
-@property (nonatomic, assign) BOOL isStarted;
-@property (nonatomic, assign) BOOL isConnected;
-@property (nonatomic, strong) QPlayAutoAppInfo *appInfo;
+@property (nonatomic,strong) QPlayAutoAppInfo *appInfo;
+@property (nonatomic,assign) BOOL isStarted;
+@property (nonatomic,assign) BOOL isConnected;
 
 + (instancetype)sharedInstance;
 
-- (void)start:(QPlayAutoAppInfo*)appInfo;
-
+- (void)connect;
+- (void)reconnectWithCallback:(QPlayAutoRequestFinishBlock)block timeout:(NSTimeInterval)timeout;
 - (void)stop;
 
 - (NSInteger)requestItems:(NSString*)parentID

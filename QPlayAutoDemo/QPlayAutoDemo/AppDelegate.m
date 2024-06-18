@@ -7,6 +7,10 @@
 //
 
 #import "AppDelegate.h"
+#import "QPlayAutoSDK.h"
+
+static NSString * const App_ID = @"";//QQ音乐申请的
+static NSString * const App_PrivateKey = @"";//RSA私钥
 
 @interface AppDelegate ()
 
@@ -14,9 +18,12 @@
 
 @implementation AppDelegate
 
-
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
-    // Override point for customization after application launch.
+    
+    [QPlayAutoSDK registerAppWithName:@"QPlayAutoDemo" brand:@"QQMusic Test" deviceId:@"qplayauto123" scheme:@"qplayautodemo://" appId:App_ID secretKey:App_PrivateKey bundleId:@"com.tencent.QPlayAutoDemo"];
+    [QPlayAutoSDK reconnectWithTimeout:3 completion:^(BOOL success, NSDictionary *dict) {
+        
+    }];
     return YES;
 }
 

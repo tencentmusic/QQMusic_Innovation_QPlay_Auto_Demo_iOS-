@@ -203,4 +203,121 @@
     }
 }
 
++ (NSArray *)getArrayFromJSON:(NSDictionary *)json forKey:(NSString *)key {
+    NSObject *object = [json objectForKey:key];
+    if ([object isKindOfClass:[NSArray class]]) {
+        return (NSArray *)object;
+    } else {
+        return nil;
+    }
+}
+
++ (NSDictionary *)getDictionaryFromJSON:(NSDictionary *)json forKey:(NSString *)key {
+    NSObject *object = [json objectForKey:key];
+    if ([object isKindOfClass:[NSDictionary class]]) {
+        return (NSDictionary *)object;
+    } else if ([object isKindOfClass:[NSString class]]) {
+        // Decode JSON string to dictionary
+        NSData *data = [(NSString *)object dataUsingEncoding:NSUTF8StringEncoding];
+        return [NSJSONSerialization JSONObjectWithData:data options:NSJSONReadingFragmentsAllowed error:nil];
+    } else {
+        return nil;
+    }
+}
+
++ (NSString *)getStringFromJSON:(NSDictionary *)json forKey:(NSString *)key {
+    NSObject *object = [json objectForKey:key];
+    if ([object isKindOfClass:[NSNumber class]]) {
+        NSNumber *number = (NSNumber *)object;
+        return number.stringValue;
+    } else if ([object isKindOfClass:[NSString class]]){
+        NSString *string = (NSString *)object;
+        if (string.length) {
+            return string;
+        } else {
+            return nil;
+        }
+    } else {
+        return nil;
+    }
+}
+
++ (int64_t)getInt64FromJSON:(NSDictionary *)json forKey:(NSString *)key {
+    NSObject *object = [json objectForKey:key];
+    if ([object isKindOfClass:[NSNumber class]]) {
+        NSNumber *number = (NSNumber *)object;
+        return number.longLongValue;
+    } else if ([object isKindOfClass:[NSString class]]){
+        NSString *string = (NSString *)object;
+        return string.longLongValue;
+    } else {
+        return 0;
+    }
+}
+
++ (int)getIntegerFromJSON:(NSDictionary *)json forKey:(NSString *)key {
+    NSObject *object = [json objectForKey:key];
+    if ([object isKindOfClass:[NSNumber class]]) {
+        NSNumber *number = (NSNumber *)object;
+        return number.intValue;
+    } else if ([object isKindOfClass:[NSString class]]){
+        NSString *string = (NSString *)object;
+        return string.intValue;
+    } else {
+        return 0;
+    }
+}
+
++ (NSNumber *)getNumberFromJSON:(NSDictionary *)json forKey:(NSString *)key {
+    NSObject *object = [json objectForKey:key];
+    if ([object isKindOfClass:[NSNumber class]]) {
+        NSNumber *number = (NSNumber *)object;
+        return number;
+    } else if ([object isKindOfClass:[NSString class]]){
+        NSString *string = (NSString *)object;
+        return [NSNumber numberWithLongLong:string.longLongValue];
+    } else {
+        return 0;
+    }
+}
+
++ (BOOL)getBoolFromJSON:(NSDictionary *)json forKey:(NSString *)key {
+    NSObject *object = [json objectForKey:key];
+    if ([object isKindOfClass:[NSNumber class]]) {
+        NSNumber *number = (NSNumber *)object;
+        return number.intValue == 0 ? NO : YES;
+    } else if ([object isKindOfClass:[NSString class]]){
+        NSString *string = (NSString *)object;
+        return string.intValue == 0 ? NO : YES;
+    } else {
+        return NO;
+    }
+}
+
++ (float)getFloatFromJSON:(NSDictionary *)json forKey:(NSString *)key {
+    NSObject *object = [json objectForKey:key];
+    if ([object isKindOfClass:[NSNumber class]]) {
+        NSNumber *number = (NSNumber *)object;
+        return number.floatValue;
+    } else if ([object isKindOfClass:[NSString class]]){
+        NSString *string = (NSString *)object;
+        return string.floatValue;
+    } else {
+        return 0;
+    }
+}
+
++ (double)getDoubleFromJSON:(NSDictionary *)json forKey:(NSString *)key {
+    NSObject *object = [json objectForKey:key];
+    if ([object isKindOfClass:[NSNumber class]]) {
+        NSNumber *number = (NSNumber *)object;
+        return number.doubleValue;
+    } else if ([object isKindOfClass:[NSString class]]){
+        NSString *string = (NSString *)object;
+        return string.doubleValue;
+    } else {
+        return 0;
+    }
+}
+
 @end
