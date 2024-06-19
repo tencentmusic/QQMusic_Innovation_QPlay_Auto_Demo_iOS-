@@ -158,7 +158,7 @@ static NSString * const QQMusic_PubKey = @"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBg
     }
     else
     {
-        NSLog(@"[IPC] 已经是连接状态");
+        completion(YES,@{@"info":@"已经是连接状态"});
     }
 }
 

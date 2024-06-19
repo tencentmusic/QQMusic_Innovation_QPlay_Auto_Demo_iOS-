@@ -154,7 +154,7 @@
         [QPlayAutoSDK stop];
         self.currentItem = nil;
         self.currentSong = nil;
-        [self.btnConnect setTitle:@"停止连接" forState:UIControlStateNormal];
+        [self.btnConnect setTitle:@"开始连接" forState:UIControlStateNormal];
         [self.tableview reloadData];
     }
     else
