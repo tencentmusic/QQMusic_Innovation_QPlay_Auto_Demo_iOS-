@@ -135,17 +135,19 @@
 #pragma mark - Actions
 
 - (void)reconnectButtonPressed {
-    [QPlayAutoSDK reconnectWithTimeout:3 completion:^(BOOL success, NSDictionary *dict) {
-        if(success)
-        {
-            [self showErrorCodeAlert:@"重连成功了😊"];
-        }
-        else
-        {
-            NSString *info = [NSString stringWithFormat:@"重连失败了😭 \n %@",[dict objectForKey:@"info"]];
-            [self showErrorCodeAlert:info];
-        }
-    }];
+    if(QPlayAutoSDK.isConnecting == NO){
+        [QPlayAutoSDK reconnectWithTimeout:3 completion:^(BOOL success, NSDictionary *dict) {
+            if(success)
+            {
+                [self showErrorCodeAlert:@"重连成功了😊"];
+            }
+            else
+            {
+                NSString *info = [NSString stringWithFormat:@"重连失败了😭 \n %@",[dict objectForKey:@"info"]];
+                [self showErrorCodeAlert:info];
+            }
+        }];
+    }
 }
 
 - (IBAction)onClickStart:(id)sender {
@@ -159,7 +161,12 @@
     }
     else
     {
-        [QPlayAutoSDK connect];
+        if(QPlayAutoSDK.isConnecting == NO){
+            [QPlayAutoSDK connect];
+        }
+        else {
+            [self showErrorCodeAlert:@"正在重连中"];
+        }
     }
     
 }

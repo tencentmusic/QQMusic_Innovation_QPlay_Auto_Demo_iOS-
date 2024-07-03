@@ -70,6 +70,10 @@
  开启QPlay
  */
 + (void)connect;
+/**
+  连接中
+ */
++ (BOOL)isConnecting;
 
 + (void)reconnectWithTimeout:(NSTimeInterval)timeout completion:(QPlayAutoRequestFinishBlock)completion;
 

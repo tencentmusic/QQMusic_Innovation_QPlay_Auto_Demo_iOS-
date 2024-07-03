@@ -153,10 +153,9 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
         block(NO,@{@"info":@"不重连(超过了24小时)"});
         return;
     }
-    self.isConnected = NO;
-    self.isStarted = YES;
     self.reconnectBlock = block;
     [self innerStop];
+    self.isStarted = YES;
     self.appInfo = self.lastConnectAppInfo;
     self.commandSocket = [[CommandSocket alloc] init];
     self.commandSocket.destIP = self.appInfo.qmHost;
