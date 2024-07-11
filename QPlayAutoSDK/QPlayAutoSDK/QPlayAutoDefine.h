@@ -99,6 +99,15 @@ typedef NS_ENUM(NSUInteger, QPlayAutoPlayMode)
     QPlayAutoPlayMode_RandomCircle=2        //随机播放
 };
 
+/**
+ QPlayAuto搜索类型
+ */
+typedef NS_ENUM(NSInteger, QPlayAutoSearchType)
+{
+    QPlayAutoSearchType_Song   = 0,      //歌曲
+    QPlayAutoSearchType_Folder = 3,      //歌单
+};
+
 typedef NS_ENUM(NSInteger, QMOpenIDAuthResult) {
     QMOpenIDAuthResult_Success  = 0,        //成功
     QMOpenIDAuthResult_Failed   = -1,       //失败
@@ -132,6 +141,7 @@ typedef NS_ENUM(NSInteger, QMOpenIDAuthResult) {
 
 @property (nonatomic,strong) NSString *ID;          //ID
 @property (nonatomic,strong) NSString *Name;        //名称
+@property (nonatomic,strong) NSString *SubName;     //副标题
 @property (nonatomic,strong) NSString *Artist;      //歌手
 @property (nonatomic,strong) NSString *Album;       //专辑
 @property (nonatomic,strong) NSString *Mid;

@@ -10,8 +10,13 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
-@interface DataSocket : NSObject
+@class DataSocket;
+@protocol DataSocketDelegate <NSObject>
+- (void)onDataSocket:(DataSocket *)socket recvData:(NSData*)data;
+@end
 
+@interface DataSocket : NSObject
+@property (nonatomic,weak) id<DataSocketDelegate> delegate;
 - (void)start;
 - (void)stop;
 

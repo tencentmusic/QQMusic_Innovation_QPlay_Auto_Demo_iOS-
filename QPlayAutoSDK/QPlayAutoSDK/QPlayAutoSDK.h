@@ -11,6 +11,8 @@
 
 #define APP_DEVICE_TYPE (3)
 
+NS_ASSUME_NONNULL_BEGIN
+
 /**
  QPlayAutoSDK回调
  */
@@ -30,6 +32,9 @@
 
 //定时关闭事件
 - (void)onPlayPausedByTimeoff;
+
+//登陆状态
+- (void)onLoginStateDidChanged:(BOOL)isLoginOK;
 
 @end
 
@@ -62,9 +67,19 @@
 + (BOOL)isQQMusicInstalled;
 
 /**
+　QQ音乐是否登录
+ */
++ (BOOL)isLoginOK;
+
+/**
 查询qq音乐信息
 */
 + (void)requestMobileDeviceInfos:(QPlayAutoRequestFinishBlock)block;
+
+/**
+ 查询歌词
+*/
++ (void)requestLyricWithSongId:(NSString *)songId completion:(QPlayAutoRequestFinishBlock)completion;
 
 /**
  开启QPlay
@@ -102,6 +117,12 @@
  @return 成功返回YES，否则返回NO
  */
 + (BOOL)activeQQMusicApp;
+
+
+/**
+ 跳转QQ音乐登录
+ */
++ (BOOL)loginQQMusicWithBundleId:(NSString *)bundleId callbackUrl:(NSString *)callbackUrl;
 
 /**
  获取数据
@@ -238,10 +259,15 @@
  搜索歌曲
  
  @param keyword 关键词
+ @param type 搜索类型
  @param firstPage 是否第一页
  @return 请求ID
  */
 + (NSInteger)search:(NSString*_Nullable)keyword
+               type:(QPlayAutoSearchType)type
           firstPage:(BOOL)firstPage
             calback:(QPlayAutoRequestFinishBlock _Nullable )block;
+
 @end
+
+NS_ASSUME_NONNULL_END

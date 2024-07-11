@@ -40,7 +40,7 @@ static NSString * const QQMusic_PubKey = @"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBg
     {
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onNotifyConnected:) name:kNotifyConnectSuccess object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onNotifyDisconnect:) name:kNotifyDisconnect object:nil];
-        
+        [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onLoginStateDidChanged:) name:kNotifyLoginStateDidChanged object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onPlayInfoChanged:) name:kNotifyPlayInfo object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onSongFavoriteStateChange:) name:kNotifySongFavariteStateChange object:nil];
         [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(onPlayModeChange:) name:kNotifyPlayModeChange object:nil];
@@ -86,6 +86,11 @@ static NSString * const QQMusic_PubKey = @"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBg
         return YES;
     }
     return NO;
+}
+
++ (BOOL)isLoginOK 
+{
+    return QPlayAutoManager.sharedInstance.isLoginOK;
 }
 
 + (BOOL)openQQMusicApp
@@ -140,6 +145,23 @@ static NSString * const QQMusic_PubKey = @"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBg
                             @"commandport":@(LocalCommandPort),
                             @"resultport":@(LocalResultPort),
                             @"encrypt":encryptString,
+                            };
+    NSString *json = [QQMusicUtils strWithJsonObject:param];
+    NSString *scheme = [NSString stringWithFormat:@"%@?p=%@",QQMusic_Scheme_Domain,[json stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
+    [QQMusicUtils openUrl:scheme];
+    return YES;
+}
+
++(BOOL)loginQQMusicWithBundleId:(NSString *)bundleId callbackUrl:(NSString *)callbackUrl
+{
+    if (![QPlayAutoSDK isQQMusicInstalled] || !bundleId.length || !callbackUrl.length)
+    {
+        return NO;
+    }
+    NSDictionary *param = @{
+                            @"cmd":@"login_appmode",
+                            @"callbackurl":callbackUrl,
+                            @"packagename":bundleId,
                             };
     NSString *json = [QQMusicUtils strWithJsonObject:param];
     NSString *scheme = [NSString stringWithFormat:@"%@?p=%@",QQMusic_Scheme_Domain,[json stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
@@ -210,6 +232,10 @@ static NSString * const QQMusic_PubKey = @"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBg
 
 + (void)requestMobileDeviceInfos:(QPlayAutoRequestFinishBlock)block{
     [[QPlayAutoManager sharedInstance] requestMobileDeviceInfos:block];
+}
+
++ (void)requestLyricWithSongId:(NSString *)songId completion:(QPlayAutoRequestFinishBlock)completion {
+    [[QPlayAutoManager sharedInstance] requestLyric:songId callback:completion];
 }
 
 + (NSInteger)getCurrentPlayInfo:(QPlayAutoRequestFinishBlock)block
@@ -338,10 +364,11 @@ static NSString * const QQMusic_PubKey = @"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBg
 }
 
 + (NSInteger)search:(NSString*)keyword
+               type:(QPlayAutoSearchType)type
           firstPage:(BOOL)firstPage
             calback:(QPlayAutoRequestFinishBlock)block;
 {
-    NSInteger reqNo = [[QPlayAutoManager sharedInstance] requestSearch:keyword firstPage:firstPage callback:block];
+    NSInteger reqNo = [[QPlayAutoManager sharedInstance] requestSearch:keyword type:type firstPage:firstPage callback:block];
     return reqNo;
 }
 
@@ -450,7 +477,15 @@ static NSString * const QQMusic_PubKey = @"MIGfMA0GCSqGSIb3DQEBAQUAA4GNADCBiQKBg
     }
 }
 
+- (void)onLoginStateDidChanged:(NSNotification*)notification 
+{
+    if(QPlayAutoManager.sharedInstance.isConnected == NO){
+        return;
+    }
+    if([self.delegate respondsToSelector:@selector(onLoginStateDidChanged:)])
+    {
+        [self.delegate onLoginStateDidChanged:[QPlayAutoManager sharedInstance].isLoginOK];
+    }
+}
+
 @end
-
-
-

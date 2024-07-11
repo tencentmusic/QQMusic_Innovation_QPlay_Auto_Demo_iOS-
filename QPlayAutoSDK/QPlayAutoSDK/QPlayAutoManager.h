@@ -16,6 +16,7 @@ NS_ASSUME_NONNULL_BEGIN
 @property (nonatomic,strong) QPlayAutoAppInfo *appInfo;
 @property (nonatomic,assign) BOOL isStarted;
 @property (nonatomic,assign) BOOL isConnected;
+@property (nonatomic,assign) BOOL isLoginOK;
 
 + (instancetype)sharedInstance;
 
@@ -43,6 +44,7 @@ NS_ASSUME_NONNULL_BEGIN
 
 - (NSInteger)requestSetAssenceMode:(QPlayAutoAssenceMode)assenceMode callback:(QPlayAutoRequestFinishBlock)block;
 
+- (void)requestLyric:(NSString*)songId callback:(QPlayAutoRequestFinishBlock)block;
 
 - (void)requestMobileDeviceInfos:(QPlayAutoRequestFinishBlock)block;
 
@@ -69,7 +71,9 @@ NS_ASSUME_NONNULL_BEGIN
                           encryptString:(NSString*)encryptString
                                callback:(QPlayAutoRequestFinishBlock)block;
 
-- (NSInteger)requestSearch:(NSString*)keyword firstPage:(BOOL)firstPage callback:(QPlayAutoRequestFinishBlock)block;
+- (NSInteger)requestSearch:(NSString*)keyword type:(QPlayAutoSearchType)type firstPage:(BOOL)firstPage callback:(QPlayAutoRequestFinishBlock)block;
+
+- (void)requestLoginStateWithcompletion:(QPlayAutoRequestFinishBlock)completion;
 
 @end
 

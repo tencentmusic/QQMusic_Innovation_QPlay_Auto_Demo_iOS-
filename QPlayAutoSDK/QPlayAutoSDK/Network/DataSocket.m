@@ -15,7 +15,6 @@
 
 @property (nonatomic,strong) GCDAsyncSocket *tcpSocket;
 @property (nonatomic,strong) GCDAsyncSocket *qmSocket;
-
 @end
 
 @implementation DataSocket
@@ -77,6 +76,11 @@
 - (void)socket:(GCDAsyncSocket *)sock didReadData:(NSData *)data withTag:(long)tag
 {
     NSLog(@"dataSocket didReadData(%ld):%lu",tag,(unsigned long)data.length);
+    if ([self.delegate respondsToSelector:@selector(onDataSocket:recvData:)])
+    {
+        [self.delegate onDataSocket:self recvData:data];
+    }
+    [sock readDataWithTimeout:-1 tag:0];
 }
 
 

@@ -8,7 +8,7 @@
 
 #import "QPlayAutoEntity.h"
 #import "QMMacros.h"
-
+#import "QQMusicUtils.h"
 
 NSString *const kQPlayAutoArgument_Count = @"Count";
 NSString *const kQPlayAutoArgument_PageIndex = @"PageIndex";
@@ -37,6 +37,7 @@ NSString *const kQPlayAutoArgument_State = @"State";
         self.Duration = [[dict objectForKey:@"Duration"] integerValue];
         self.CoverUri = [dict objectForKey:@"CoverUri"];
         self.Mid = [dict objectForKey:@"Mid"];
+        self.SubName = [QQMusicUtils getStringFromJSON:dict forKey:@"SubName"];
     }
     return self;
 }

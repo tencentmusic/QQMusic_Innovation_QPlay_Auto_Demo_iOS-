@@ -8,6 +8,8 @@
 
 #import "ViewController.h"
 #import "QPlayAutoSDK.h"
+#import "MainTableCell.h"
+#import "Masonry.h"
 
 #define NormalPageSize  (30)
 #define ID_GO_BACK @"GO_BACK"
@@ -26,6 +28,7 @@
 @property (nonatomic,assign) NSInteger currentProgress;
 @property (nonatomic,assign) QPlayAutoPlayMode currentPlayMode;
 @property (nonatomic,assign) BOOL isLove;
+@property (nonatomic,assign) BOOL isLoginOK;
 
 @property (nonatomic,strong) NSString *openId;
 @property (nonatomic,strong) NSString *openToken;
@@ -33,7 +36,7 @@
 @property (weak, nonatomic) IBOutlet UIButton *likeButtohn;
 @property (nonatomic,strong) UISegmentedControl       *assenceSegmentedControl;
 @property (nonatomic,strong) UIButton *reconnectButton;
-
+@property (nonatomic,strong) UIButton *loginButton;
 
 @end
 
@@ -43,9 +46,10 @@
     [super viewDidLoad];
     // Do any additional setup after loading the view, typically from a nib.
     [QPlayAutoSDK setDelegate:self];
-    [self.tableview registerClass:[UITableViewCell class] forCellReuseIdentifier:@"qplayautocell"];
+    [self.tableview registerClass:[MainTableCell class] forCellReuseIdentifier:@"qplayautocell"];
     self.tableview.delegate = self;
     self.tableview.dataSource = self;
+    self.tableview.rowHeight = 48;
     self.imageCache = [[NSMutableDictionary alloc]init];
     [self.btnConnect setTitleColor:[UIColor colorWithRed:50.f/255 green:188.f/255 blue:108.f/255 alpha:1] forState:UIControlStateNormal];
     [self.btnMore setTitleColor:self.btnConnect.currentTitleColor forState:UIControlStateNormal];
@@ -84,7 +88,6 @@
     _reconnectButton.titleLabel.font = [UIFont systemFontOfSize:15];
     [_reconnectButton setTitleColor:UIColor.blackColor forState:UIControlStateNormal];
     _reconnectButton.backgroundColor = UIColor.whiteColor;
-    _reconnectButton.translatesAutoresizingMaskIntoConstraints = NO;
     [_reconnectButton addTarget:self action:@selector(reconnectButtonPressed) forControlEvents:UIControlEventTouchUpInside];
     [self.view addSubview:_reconnectButton];
     
@@ -92,11 +95,11 @@
     NSLayoutConstraint *b = [NSLayoutConstraint constraintWithItem:_assenceSegmentedControl attribute:NSLayoutAttributeBottom relatedBy:NSLayoutRelationEqual toItem:_likeButtohn attribute:NSLayoutAttributeTop multiplier:1 constant:-15];
     [NSLayoutConstraint activateConstraints:@[a,b]];
     
-    NSLayoutConstraint *c = [NSLayoutConstraint constraintWithItem:_reconnectButton attribute:NSLayoutAttributeCenterY relatedBy:NSLayoutRelationEqual toItem:_btnConnect attribute:NSLayoutAttributeCenterY multiplier:1 constant:0];
-    NSLayoutConstraint *d = [NSLayoutConstraint constraintWithItem:_reconnectButton attribute:NSLayoutAttributeLeading relatedBy:NSLayoutRelationEqual toItem:_btnConnect attribute:NSLayoutAttributeTrailing multiplier:1 constant:30];
-    NSLayoutConstraint *e = [NSLayoutConstraint constraintWithItem:_reconnectButton attribute:NSLayoutAttributeWidth relatedBy:NSLayoutRelationEqual toItem:_btnConnect attribute:NSLayoutAttributeWidth multiplier:1 constant:0];
-    NSLayoutConstraint *f = [NSLayoutConstraint constraintWithItem:_reconnectButton attribute:NSLayoutAttributeHeight relatedBy:NSLayoutRelationEqual toItem:_btnConnect attribute:NSLayoutAttributeHeight multiplier:1 constant:0];
-    [NSLayoutConstraint activateConstraints:@[c,d,e,f]];
+    [self.reconnectButton mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.leading.mas_equalTo(self.btnConnect.mas_trailing).offset(12);
+        make.height.mas_equalTo(self.btnConnect.mas_height);
+        make.width.centerY.equalTo(self.btnConnect);
+    }];
 }
 
 - (void)assenceSegmentedControlChanged:(UISegmentedControl*)sender {
@@ -300,14 +303,39 @@
                                    {
                                        [alertView dismissViewControllerAnimated: YES completion: nil];
                                    }];
-    
+    UIAlertAction* loginQQAction = [UIAlertAction actionWithTitle:@"拉端登录QQ音乐"
+                                                       style:UIAlertActionStyleDefault
+                                                     handler:^(UIAlertAction* action)
+                               
+                               {
+                                   [QPlayAutoSDK loginQQMusicWithBundleId:@"com.tencent.QPlayAutoDemo" callbackUrl:@"qplayautodemo://"];
+                                   [alertView dismissViewControllerAnimated: YES completion: nil];
+                               }];
     
     [alertView addAction:reloadDataAction];
     [alertView addAction:mvAction];
     [alertView addAction:cancelAction];
     [alertView addAction:midSongAction];
     [alertView addAction:requsetQQAction];
+    [alertView addAction:loginQQAction];
     [self presentViewController:alertView animated:NO completion:nil];
+}
+
+- (void)lyricButtonPressed:(UIButton *)sender {
+    if(QPlayAutoSDK.isConnected==NO || !self.currentItem.items.count){
+        return;
+    }
+    QPlayAutoListItem *item = [self.currentItem.items objectAtIndex:sender.tag];
+    __weak __typeof(self)weakSelf = self;
+    [QPlayAutoSDK requestLyricWithSongId:item.ID completion:^(BOOL success, NSDictionary *dict) {
+        __strong __typeof(weakSelf)strongSelf = weakSelf;
+        if(success){
+            NSString *lyricsString = [dict objectForKey:@"lyricsString"];
+            [strongSelf showErrorCodeAlert:lyricsString];
+        }else {
+            [strongSelf showErrorCodeAlert:[NSString stringWithFormat:@"获取歌词失败(%@)",item.Name]];
+        }
+    }];
 }
 
 #pragma mark Private Method
@@ -465,7 +493,7 @@
     if (self.currentSong==nil || self.playState!=QPlayAutoPlayState_Playing || self.currentSong.Duration<=0)
         return;
     self.currentProgress ++ ;
-    NSLog(@"更新进度:%d/%d",(int)self.currentProgress,(int)self.currentSong.Duration);
+    //NSLog(@"更新进度:%d/%d",(int)self.currentProgress,(int)self.currentSong.Duration);
     if(self.currentProgress>self.currentSong.Duration)
         self.currentProgress = self.currentSong.Duration;
     else if(self.currentProgress<0)
@@ -649,7 +677,8 @@
 {
     if(QPlayAutoSDK.isConnected==NO)
         return;
-    UIAlertController *alertController = [UIAlertController alertControllerWithTitle:@"搜索" message:@"请输入关键词" preferredStyle:UIAlertControllerStyleAlert];
+    QPlayAutoSearchType searchType = QPlayAutoSearchType_Folder;
+    UIAlertController *alertController = [UIAlertController alertControllerWithTitle:[NSString  stringWithFormat:@"搜索 %@",searchType==QPlayAutoSearchType_Song?@"歌曲":@"歌单"]message:@"请输入关键词" preferredStyle:UIAlertControllerStyleAlert];
     [alertController addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
         textField.placeholder = @"关键词";
         textField.text = @"周杰伦";
@@ -662,7 +691,7 @@
                                         [self presentViewController:alertController animated:YES completion:^{
                                             UITextField *textField = alertController.textFields.firstObject;
                                             if (textField.text.length>0){
-                                                [QPlayAutoSDK search:textField.text firstPage:YES calback:^(BOOL success, NSDictionary *dict) {
+                                                [QPlayAutoSDK search:textField.text type:searchType firstPage:YES calback:^(BOOL success, NSDictionary *dict) {
                                                     NSInteger errorCode = [[dict objectForKey:@"Error"] integerValue];
                                                     if (errorCode!=0)
                                                     {
@@ -701,7 +730,7 @@
     [self presentViewController:alertController animated:YES completion:nil];
 }
 
-#pragma mark tableview
+#pragma mark ---tableview---
 
 - (NSInteger)tableView:(UITableView *)tableView numberOfRowsInSection:(NSInteger)section
 {
@@ -710,32 +739,11 @@
 
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath
 {
-    NSString *CellIdentifier = @"qplayautocell";
-    UITableViewCell *cell = [tableView dequeueReusableCellWithIdentifier:CellIdentifier];
-    if (cell==nil)
-    {
-        cell = [[UITableViewCell alloc] initWithStyle:UITableViewCellStyleSubtitle reuseIdentifier:CellIdentifier];
-    }
-    if (self.currentItem.items.count <= indexPath.row)
-    {
-        return cell;
-    }
-    
+    MainTableCell *cell = (MainTableCell *)[tableView dequeueReusableCellWithIdentifier:@"qplayautocell" forIndexPath:indexPath];
     QPlayAutoListItem *listItem = [self.currentItem.items objectAtIndex:indexPath.row];
-    if (listItem.CoverUri.length) {
-        NSURLSessionDataTask *downloadTask = [[NSURLSession sharedSession] dataTaskWithURL:[NSURL URLWithString:listItem.CoverUri] completionHandler:^(NSData * _Nullable data, NSURLResponse * _Nullable response, NSError * _Nullable error) {
-            UIImage *image = [UIImage imageWithData:data];
-            dispatch_async(dispatch_get_main_queue(), ^{
-                cell.imageView.image = image;
-            });
-        }];
-        [downloadTask resume];
-    }
-    else {
-        cell.imageView.image = nil;
-    }
-    cell.backgroundColor = [UIColor clearColor];
-    cell.textLabel.text = listItem.Name;
+    [cell.lyricButton addTarget:self action:@selector(lyricButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
+    cell.lyricButton.tag = indexPath.row;
+    [cell updateWithItem:listItem];
     return cell;
 }
 
@@ -860,6 +868,12 @@
 -(void)onPlayPausedByTimeoff
 {
     [self showErrorCodeAlert:@"糟糕 定时关闭了"];
+}
+
+- (void)onLoginStateDidChanged:(BOOL)isLoginOK 
+{
+    self.isLoginOK = isLoginOK;
+    [self showErrorCodeAlert:[NSString stringWithFormat:@"QQ音乐 %@",isLoginOK?@"已登陆":@"未登录"]];
 }
 
 - (void)showErrorCodeAlert:(NSString *)content

@@ -33,5 +33,6 @@
 #define kNotifySongFavariteStateChange @"kNotifySongFavariteStateChange"
 #define kNotifyPlayModeChange @"kNotifyPlayModeChange"
 #define kNotifyPlayPausedByTimeOff @"kNotifyPlayPausedByTimeOff" //Q音开启了定时关闭播放
+#define kNotifyLoginStateDidChanged @"kNotifyLoginStateDidChanged"
 
 #endif /* QMMacros_h */

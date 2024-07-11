@@ -21,6 +21,7 @@
 
 NSString *const kQPlayAutoItemRootID = @"-1";
 NSString *const kQPlayAutoCmd_MobileDeviceInfos = @"MobileDeviceInfos";
+NSString *const kQPlayAutoCmd_LoginState = @"LoginState";
 NSString *const kQPlayAutoCmd_DeviceInfos = @"DeviceInfos";
 NSString *const kQPlayAutoCmd_Items = @"Items";
 NSString *const kQPlayAutoCmd_IsFavorite = @"IsFavorite";
@@ -50,7 +51,7 @@ NSString *const kQPlayAutoCmd_Reconnect = @"Reconnect";
 
 NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectInfo";
 
-@interface QPlayAutoManager()<CommandSocketDelegate,DiscoverSocketDelegate,ResultSocketDelegate>
+@interface QPlayAutoManager()<CommandSocketDelegate,DiscoverSocketDelegate,ResultSocketDelegate,DataSocketDelegate>
 
 @property (nonatomic,strong) DiscoverSocket *discoverSocket;
 @property (nonatomic,strong) HeartbeatSocket *heartbeatSocket;
@@ -71,7 +72,7 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
 @property (nonatomic,strong,nullable) QPlayAutoAppInfo *lastConnectAppInfo;
 @property (nonatomic,strong) dispatch_source_t timeoutTimer;
 @property (nonatomic,copy,nullable) QPlayAutoRequestFinishBlock reconnectBlock;
-
+@property (nonatomic,strong) NSMutableData *dataBuffer;
 @end
 
 
@@ -88,7 +89,16 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
 }
 
 #pragma mark - Getter & Setter
-- (void)setLastConnectAppInfo:(QPlayAutoAppInfo *)lastConnectAppInfo 
+- (NSMutableData *)dataBuffer 
+{
+    if(!_dataBuffer)
+    {
+        _dataBuffer = [NSMutableData data];
+    }
+    return _dataBuffer;
+}
+
+- (void)setLastConnectAppInfo:(QPlayAutoAppInfo *)lastConnectAppInfo
 {
     NSData *encodedAppInfo = [NSKeyedArchiver archivedDataWithRootObject:lastConnectAppInfo];
     [[NSUserDefaults standardUserDefaults] setObject:encodedAppInfo forKey:kQPlayAutoInfo_LastConnectInfo];
@@ -127,6 +137,7 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
     self.commandSocket.delegate = self;
     
     self.dataSocket = [[DataSocket alloc] init];
+    self.dataSocket.delegate = self;
     [self.dataSocket start];
     self.requestDic = [[NSMutableDictionary alloc]init];
     
@@ -164,6 +175,7 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
     self.commandSocket.delegate = self;
     
     self.dataSocket = [[DataSocket alloc] init];
+    self.dataSocket.delegate = self;
     [self.dataSocket start];
     self.requestDic = [[NSMutableDictionary alloc] init];
     
@@ -201,6 +213,8 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
 
 - (void)innerStop
 {
+    self.isLoginOK = NO;
+    [self.dataBuffer setLength:0];
     self.isConnected = NO;
     self.isStarted = NO;
     self.requestDic = nil;
@@ -211,6 +225,7 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
     self.commandSocket = nil;
     
     [self.dataSocket stop];
+    self.dataSocket.delegate = nil;
     self.dataSocket = nil;
     
     [self.heartbeatSocket stop];
@@ -248,6 +263,7 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
     
     self.lastHeartbeatTime = [NSDate timeIntervalSinceReferenceDate];
     [self startCheckHeartbeatTimer];
+    [self requestLoginStateWithcompletion:^(BOOL success, NSDictionary *dict) {}];
 }
 
 - (void)onDisconnect
@@ -264,10 +280,18 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
 {
     QPlayAutoRequestInfo *req = [[QPlayAutoRequestInfo alloc]initWithRequestNO:[self getRequestId] finishBlock:block];
     [self.requestDic setObject:req forKey:req.key];
-    NSString *msg = [NSString stringWithFormat:@"{\"RequestID\":%ld,\"Request\":\"%@\"}\r\n",(long)req.requestNo,kQPlayAutoCmd_MobileDeviceInfos];
+    NSString *msg = [NSString stringWithFormat:@"{\"RequestID\":%ld,\"Request\":\"%@\"}\r\n",(long)req.requestNo,kQPlayAutoCmd_LoginState];
     [self.commandSocket sendMsg:msg];
 }
 
+
+- (void)requestLoginStateWithcompletion:(QPlayAutoRequestFinishBlock)completion 
+{
+    QPlayAutoRequestInfo *req = [[QPlayAutoRequestInfo alloc]initWithRequestNO:[self getRequestId] finishBlock:completion];
+    [self.requestDic setObject:req forKey:req.key];
+    NSString *msg = [NSString stringWithFormat:@"{\"RequestID\":%ld,\"Request\":\"%@\"}\r\n",(long)req.requestNo,kQPlayAutoCmd_MobileDeviceInfos];
+    [self.commandSocket sendMsg:msg];
+}
 
 //查询歌单目录
 - (NSInteger)requestItems:(NSString*)parentID
@@ -278,7 +302,7 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
                 openToken:(nullable NSString*)openToken     //访问用户歌单需要
                 calllback:(QPlayAutoRequestFinishBlock)block
 {
-    QPlayAutoRequestInfo *req = [[QPlayAutoRequestInfo alloc]initWithRequestNO:[self getRequestId] finishBlock:block];
+    QPlayAutoRequestInfo *req = [[QPlayAutoRequestInfo alloc] initWithRequestNO:[self getRequestId] finishBlock:block];
     [self.requestDic setObject:req forKey:req.key];
     
     NSString *msg = [NSString stringWithFormat:@"{\"RequestID\":%ld,\"Request\":\"%@\",\"Arguments\":{\"ParentID\":\"%@\", \"PageIndex\":%tu, \"PagePerCount\":%tu,\"AppID\":\"%@\",\"OpenID\":\"%@\",\"OpenToken\":\"%@\"}}\r\n",(long)req.requestNo, kQPlayAutoCmd_Items,parentID,pageIndex,pageSize,appId,openId,openToken];
@@ -355,11 +379,11 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
 }
 
 //查询歌词
-- (void)requestLyric:(NSString*)songId lyricType:(NSInteger)lyricType
+- (void)requestLyric:(NSString*)songId callback:(QPlayAutoRequestFinishBlock)block
 {
-    QPlayAutoRequestInfo *req = [[QPlayAutoRequestInfo alloc]initWithRequestNO:[self getRequestId] finishBlock:nil];
+    QPlayAutoRequestInfo *req = [[QPlayAutoRequestInfo alloc] initWithRequestNO:[self getRequestId] finishBlock:block];
     [self.requestDic setObject:req forKey:req.key];
-    NSString *msg = [NSString stringWithFormat:@"{\"RequestID\":%ld,\"Request\":\"%@\",\"Arguments\":{\"SongID\":\"%@\",\"PackageIndex\":,\"LyricType\":%zd}}\r\n",(long)req.requestNo,kQPlayAutoCmd_LyricData,songId,lyricType];
+    NSString *msg = [NSString stringWithFormat:@"{\"RequestID\":%ld,\"Request\":\"%@\",\"Arguments\":{\"SongID\":\"%@\",\"PackageIndex\":%d,\"LyricType\":%d}}\r\n",(long)req.requestNo,kQPlayAutoCmd_LyricData,songId,0,1];
     [self.commandSocket sendMsg:msg];
 }
 
@@ -476,11 +500,11 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
     return req.requestNo;
 }
 
-- (NSInteger)requestSearch:(NSString*)keyword firstPage:(BOOL)firstPage callback:(QPlayAutoRequestFinishBlock)block
+- (NSInteger)requestSearch:(NSString*)keyword type:(QPlayAutoSearchType)type firstPage:(BOOL)firstPage callback:(QPlayAutoRequestFinishBlock)block
 {
     QPlayAutoRequestInfo *req = [[QPlayAutoRequestInfo alloc]initWithRequestNO:[self getRequestId] finishBlock:block];
     [self.requestDic setObject:req forKey:req.key];
-    NSString *msg = [NSString stringWithFormat:@"{\"RequestID\":%ld,\"Request\":\"%@\", \"Arguments\":{\"Key\":\"%@\",\"PageFlag\":%d}}\r\n",(long)req.requestNo,kQPlayAutoCmd_Search,keyword,firstPage?0:1];
+    NSString *msg = [NSString stringWithFormat:@"{\"RequestID\":%ld,\"Request\":\"%@\", \"Arguments\":{\"Key\":\"%@\",\"PageFlag\":%d,\"SearchType\":%ld}}\r\n",(long)req.requestNo,kQPlayAutoCmd_Search,keyword,firstPage?0:1,(long)type];
     [self.commandSocket sendMsg:msg];
     return req.requestNo;
 }
@@ -528,7 +552,73 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
     }
 }
 
-#pragma mark CommandSocketDelegate
+#pragma mark ---- DataSocketDelegate ----
+- (void)onDataSocket:(DataSocket *)socket recvData:(NSData *)data 
+{
+    if(data.length)
+    {
+        if(self.dataBuffer.length){
+            [self.dataBuffer appendData:data];
+        }
+        NSString *clientStr = [[NSString alloc] initWithData:self.dataBuffer.length?self.dataBuffer : data encoding:NSUTF8StringEncoding];
+        if(clientStr.length)
+        {
+            NSArray<NSString *> *lines = [clientStr componentsSeparatedByString:@"\n"];
+            NSString *jsonString = nil;
+            NSMutableString *lyricsString = [NSMutableString string];
+            // 遍历每一行，找到非空的第一行作为 JSON 数据
+            for (NSInteger index = 0;index<lines.count;index++) {
+                NSString *line = [lines objectAtIndex:index];
+                if (line.length > 0 && jsonString == nil) {
+                    jsonString = line;
+                } else {
+                    [lyricsString appendString:line];
+                    if(index<lines.count-1){
+                        [lyricsString appendString:@"\n"];
+                    }
+                }
+            }
+            if (jsonString) {
+                NSError *error = nil;
+                NSData *jsonData = [jsonString dataUsingEncoding:NSUTF8StringEncoding];
+                NSDictionary *jsonDict = [NSJSONSerialization JSONObjectWithData:jsonData options:0 error:&error];
+                if (error) {
+                    NSLog(@"Error parsing JSON: %@", error.localizedDescription);
+                    return;
+                }
+                NSString *reqIdStr = [QQMusicUtils getStringFromJSON:jsonDict forKey:@"RequestID"];
+                if(reqIdStr.length){
+                    QPlayAutoRequestInfo *req = [self.requestDic objectForKey:reqIdStr];
+                    if(req.finishBlock) {
+                        [self.dataBuffer setLength:0];
+                        NSMutableDictionary *result = [NSMutableDictionary dictionary];
+                        if(lyricsString.length){
+                            [result setObject:lyricsString forKey:@"lyricsString"];
+                            req.finishBlock(YES,result);
+                        }else {
+                            if(data.length < 200){
+                                [self.dataBuffer appendData:data];
+                                NSLog(@"datasocket 数据分批次回了");
+                            }else {
+                                req.finishBlock(NO,result);
+                            }
+                        }
+                    }else {
+                        [self.dataBuffer setLength:0];
+                    }
+                }
+                else {
+                    [self.dataBuffer setLength:0];
+                }
+            } else {
+                [self.dataBuffer setLength:0];
+                NSLog(@"No JSON data found.");
+            }
+        }
+    }
+}
+
+#pragma mark ---- CommandSocketDelegate ----
 
 - (void)onCommandSocket:(CommandSocket*)socket recvData:(NSData*)data
 {
@@ -615,6 +705,11 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
         else if ([eventName isEqualToString:@"QPlay_TimeOff"])
         {
             [[NSNotificationCenter defaultCenter] postNotificationName:kNotifyPlayPausedByTimeOff object:nil userInfo:dataDict];
+        }
+        else if ([eventName isEqualToString:@"LoginState"])
+        {
+            self.isLoginOK = [QQMusicUtils getBoolFromJSON:dataDict forKey:@"isLoginOK"];
+            [[NSNotificationCenter defaultCenter] postNotificationName:kNotifyLoginStateDidChanged object:nil userInfo:dataDict];
         }
         return;
     }
