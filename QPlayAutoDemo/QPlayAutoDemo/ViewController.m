@@ -13,15 +13,18 @@
 
 #define NormalPageSize  (30)
 #define ID_GO_BACK @"GO_BACK"
-#define ID_SEARCH @"SEARCH"
+#define ID_SEARCH_FOLDER @"SEARCH_FOLDER"
+#define ID_SEARCH_SONG @"SEARCH_SONG"
 
 @interface ViewController ()<QPlayAutoSDKDelegate,UITableViewDelegate,UITableViewDataSource>
 
 @property (nonatomic,strong) QPlayAutoListItem *rootItem;
 @property (nonatomic,strong) QPlayAutoListItem *currentItem;
-@property (nonatomic,strong) QPlayAutoListItem *searchItem;
+@property (nonatomic,strong) QPlayAutoListItem *searchFolderItem;
+@property (nonatomic,strong) QPlayAutoListItem *searchSongItem;
 @property (nonatomic,strong) QPlayAutoListItem *currentSong;
 @property (nonatomic,assign) QPlayAutoPlayState playState;
+@property (nonatomic,strong) NSString *lastSearchKeyWord;
 @property (nonatomic,strong) NSMutableArray<QPlayAutoListItem*> *pathStack;
 @property (nonatomic,strong) NSMutableDictionary<NSString*,UIImage*> *imageCache;
 @property (nonatomic,strong) NSTimer *progressTimer;
@@ -367,10 +370,17 @@
     self.rootItem.ID = kQPlayAutoItemRootID;
     self.rootItem.items = [[NSMutableArray alloc]init];
     
-    self.searchItem = [[QPlayAutoListItem alloc]init];
-    self.searchItem.Name = @"搜索";
-    self.searchItem.ID = ID_SEARCH;
-    [self.rootItem.items addObject:self.searchItem];
+    self.searchSongItem = [[QPlayAutoListItem alloc]init];
+    self.searchSongItem.Name = @"搜索歌曲";
+    self.searchSongItem.ID = ID_SEARCH_SONG;
+    [self.rootItem.items addObject:self.searchSongItem];
+    
+    self.searchFolderItem = [[QPlayAutoListItem alloc]init];
+    self.searchFolderItem.Name = @"搜索歌单";
+    self.searchFolderItem.ID = ID_SEARCH_FOLDER;
+    [self.rootItem.items addObject:self.searchFolderItem];
+    
+
     
     self.currentItem = self.rootItem;
     self.pathStack = [[NSMutableArray alloc] init];
@@ -673,15 +683,14 @@
     }];
 }
 
-- (void)requestSearch
+- (void)requestSearch:(QPlayAutoSearchType)searchType
 {
     if(QPlayAutoSDK.isConnected==NO)
         return;
-    QPlayAutoSearchType searchType = QPlayAutoSearchType_Folder;
     UIAlertController *alertController = [UIAlertController alertControllerWithTitle:[NSString  stringWithFormat:@"搜索 %@",searchType==QPlayAutoSearchType_Song?@"歌曲":@"歌单"]message:@"请输入关键词" preferredStyle:UIAlertControllerStyleAlert];
     [alertController addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
         textField.placeholder = @"关键词";
-        textField.text = @"周杰伦";
+        textField.text = self.lastSearchKeyWord?self.lastSearchKeyWord:@"周杰伦";
     }];
     UIAlertAction* okAction = [UIAlertAction actionWithTitle:@"确定"
                                                             style:UIAlertActionStyleDefault
@@ -691,13 +700,16 @@
                                         [self presentViewController:alertController animated:YES completion:^{
                                             UITextField *textField = alertController.textFields.firstObject;
                                             if (textField.text.length>0){
-                                                [QPlayAutoSDK search:textField.text type:searchType firstPage:YES calback:^(BOOL success, NSDictionary *dict) {
+                                                [QPlayAutoSDK search:textField.text type:searchType
+                                                           firstPage:![textField.text isEqualToString:self.lastSearchKeyWord]
+                                                             calback:^(BOOL success, NSDictionary *dict) {
                                                     NSInteger errorCode = [[dict objectForKey:@"Error"] integerValue];
                                                     if (errorCode!=0)
                                                     {
                                                         [self setLog:[NSString stringWithFormat:@"搜索失败,error:%zd",errorCode]];
                                                         return;
                                                     }
+                                                    self.lastSearchKeyWord = textField.text;
                                                     NSArray *itemList = [dict objectForKey:kQPlayAutoArgument_Lists];
                                                     if (itemList.count>0)
                                                     {
@@ -708,8 +720,13 @@
                                                                 continue;
                                                             }
                                                             QPlayAutoListItem *item = [[QPlayAutoListItem alloc] initWithDictionary:itemDict];
-                                                            item.parentItem = self.searchItem;
-                                                            [self.searchItem.items addObject:item];
+                                                            if (searchType==QPlayAutoSearchType_Song) {
+                                                                item.parentItem = self.searchSongItem ;
+                                                                [self.searchSongItem.items addObject:item];
+                                                            }else{
+                                                                item.parentItem = self.searchFolderItem ;
+                                                                [self.searchFolderItem.items addObject:item];
+                                                            }
                                                         }
                                                     }
                                                     [self.tableview reloadData];
@@ -768,14 +785,24 @@
         [self.tableview reloadData];
         return;
     }
-    else if ([listItem.ID isEqualToString:ID_SEARCH])
+    else if ([listItem.ID isEqualToString:ID_SEARCH_SONG])
     {
-        self.currentItem = self.searchItem;
+        self.currentItem = self.searchSongItem;
         self.currentItem.items = [[NSMutableArray alloc]init];
         QPlayAutoListItem *item = [self getGoBackItem];
         [self.currentItem.items addObject:item];
          [self.tableview reloadData];
-        [self requestSearch];
+        [self requestSearch:QPlayAutoSearchType_Song];
+        return;
+    }
+    else if ([listItem.ID isEqualToString:ID_SEARCH_FOLDER])
+    {
+        self.currentItem = self.searchFolderItem;
+        self.currentItem.items = [[NSMutableArray alloc]init];
+        QPlayAutoListItem *item = [self getGoBackItem];
+        [self.currentItem.items addObject:item];
+         [self.tableview reloadData];
+        [self requestSearch:QPlayAutoSearchType_Folder];
         return;
     }
     
@@ -870,7 +897,7 @@
     [self showErrorCodeAlert:@"糟糕 定时关闭了"];
 }
 
-- (void)onLoginStateDidChanged:(BOOL)isLoginOK 
+- (void)onLoginStateDidChanged:(BOOL)isLoginOK
 {
     self.isLoginOK = isLoginOK;
     [self showErrorCodeAlert:[NSString stringWithFormat:@"QQ音乐 %@",isLoginOK?@"已登陆":@"未登录"]];
