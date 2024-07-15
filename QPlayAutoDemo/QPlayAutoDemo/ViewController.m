@@ -40,10 +40,21 @@
 @property (nonatomic,strong) UISegmentedControl       *assenceSegmentedControl;
 @property (nonatomic,strong) UIButton *reconnectButton;
 @property (nonatomic,strong) UIButton *loginButton;
-
+@property(nonatomic,strong) UIActivityIndicatorView *indicatorView;
 @end
 
 @implementation ViewController
+
+- (UIActivityIndicatorView *)indicatorView {
+    if(!_indicatorView){
+        _indicatorView = [[UIActivityIndicatorView alloc] initWithActivityIndicatorStyle:UIActivityIndicatorViewStyleGray];
+        [_indicatorView setFrame:CGRectMake(0, 0, 30, 30)];
+        _indicatorView.hidesWhenStopped = YES;
+        [self.view addSubview:_indicatorView];
+        _indicatorView.center = self.view.center;
+    }
+    return _indicatorView;
+}
 
 - (void)viewDidLoad {
     [super viewDidLoad];
@@ -329,9 +340,11 @@
         return;
     }
     QPlayAutoListItem *item = [self.currentItem.items objectAtIndex:sender.tag];
+    [self.indicatorView startAnimating];
     __weak __typeof(self)weakSelf = self;
     [QPlayAutoSDK requestLyricWithSongId:item.ID completion:^(BOOL success, NSDictionary *dict) {
         __strong __typeof(weakSelf)strongSelf = weakSelf;
+        [strongSelf.indicatorView stopAnimating];
         if(success){
             NSString *lyricsString = [dict objectForKey:@"lyricsString"];
             [strongSelf showErrorCodeAlert:lyricsString];
@@ -700,9 +713,11 @@
                                         [self presentViewController:alertController animated:YES completion:^{
                                             UITextField *textField = alertController.textFields.firstObject;
                                             if (textField.text.length>0){
+                                                [self.indicatorView startAnimating];
                                                 [QPlayAutoSDK search:textField.text type:searchType
                                                            firstPage:![textField.text isEqualToString:self.lastSearchKeyWord]
                                                              calback:^(BOOL success, NSDictionary *dict) {
+                                                    [self.indicatorView stopAnimating];
                                                     NSInteger errorCode = [[dict objectForKey:@"Error"] integerValue];
                                                     if (errorCode!=0)
                                                     {
