@@ -280,7 +280,7 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
 {
     QPlayAutoRequestInfo *req = [[QPlayAutoRequestInfo alloc]initWithRequestNO:[self getRequestId] finishBlock:block];
     [self.requestDic setObject:req forKey:req.key];
-    NSString *msg = [NSString stringWithFormat:@"{\"RequestID\":%ld,\"Request\":\"%@\"}\r\n",(long)req.requestNo,kQPlayAutoCmd_LoginState];
+    NSString *msg = [NSString stringWithFormat:@"{\"RequestID\":%ld,\"Request\":\"%@\"}\r\n",(long)req.requestNo,kQPlayAutoCmd_MobileDeviceInfos];
     [self.commandSocket sendMsg:msg];
 }
 
@@ -289,7 +289,7 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
 {
     QPlayAutoRequestInfo *req = [[QPlayAutoRequestInfo alloc]initWithRequestNO:[self getRequestId] finishBlock:completion];
     [self.requestDic setObject:req forKey:req.key];
-    NSString *msg = [NSString stringWithFormat:@"{\"RequestID\":%ld,\"Request\":\"%@\"}\r\n",(long)req.requestNo,kQPlayAutoCmd_MobileDeviceInfos];
+    NSString *msg = [NSString stringWithFormat:@"{\"RequestID\":%ld,\"Request\":\"%@\"}\r\n",(long)req.requestNo,kQPlayAutoCmd_LoginState];
     [self.commandSocket sendMsg:msg];
 }
 
