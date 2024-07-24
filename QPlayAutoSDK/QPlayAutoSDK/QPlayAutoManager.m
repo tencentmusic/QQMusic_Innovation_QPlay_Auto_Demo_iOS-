@@ -268,8 +268,7 @@ NSString *const kQPlayAutoInfo_LastConnectInfo = @"kQMQPlayAutoInfo_LastConnectI
 
 - (void)onDisconnect
 {
-    self.isConnected = NO;
-    self.isStarted = NO;
+    [self innerStop];
     [self stopCheckHeartbeatTimer];
     [[NSNotificationCenter defaultCenter] postNotificationName:kNotifyDisconnect object:nil];
 }
