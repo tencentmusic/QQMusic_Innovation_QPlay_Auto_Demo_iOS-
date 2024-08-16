@@ -12,6 +12,9 @@
 
 NS_ASSUME_NONNULL_BEGIN
 
+@interface NewPlayingTagLabel : UILabel
+@end
+
 @interface MainTableCell : UITableViewCell
 @property (nonatomic) UIButton *lyricButton;
 - (void)updateWithItem:(QPlayAutoListItem *)item;

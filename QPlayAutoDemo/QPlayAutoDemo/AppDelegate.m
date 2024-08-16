@@ -8,6 +8,7 @@
 
 #import "AppDelegate.h"
 #import "QPlayAutoSDK.h"
+#import "MainViewController.h"
 
 static NSString * const App_ID = @"";//QQ音乐申请的
 static NSString * const App_PrivateKey = @"";//RSA私钥
@@ -20,10 +21,15 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions {
     
-    [QPlayAutoSDK registerAppWithName:@"QPlayAutoDemo" brand:@"QQMusic Test" deviceId:@"qplayauto123" scheme:@"qplayautodemo://" appId:App_ID secretKey:App_PrivateKey bundleId:@"com.tencent.QPlayAutoDemo"];
+    [QPlayAutoSDK registerAppWithName:@"QPlayAutoDemo" brand:@"QQMusic Test" deviceId:@"qplayauto123" scheme:@"qplayautodemo://qqmusic" appId:App_ID secretKey:App_PrivateKey bundleId:@"com.tencent.QPlayAutoDemo"];
     [QPlayAutoSDK reconnectWithTimeout:3 completion:^(BOOL success, NSDictionary *dict) {
         
     }];
+    
+    self.window = [[UIWindow alloc] initWithFrame:UIScreen.mainScreen.bounds];
+    self.window.rootViewController = [[UINavigationController alloc] initWithRootViewController:[[MainViewController alloc] init]];
+    [self.window makeKeyAndVisible];
+    
     return YES;
 }
 
@@ -73,5 +79,13 @@ static NSString * const App_PrivateKey = @"";//RSA私钥
    
 }
 
+- (BOOL)application:(UIApplication *)app openURL:(NSURL *)url options:(NSDictionary<UIApplicationOpenURLOptionsKey,id> *)options {
+    
+    if([QPlayAutoSDK canHandleOpenURL:url])
+    {
+        return [QPlayAutoSDK handleOpenURL:url];
+    }
+    return NO;
+}
 
 @end
