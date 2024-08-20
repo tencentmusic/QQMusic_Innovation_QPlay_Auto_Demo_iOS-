@@ -38,6 +38,7 @@
 @property (nonatomic) UITapGestureRecognizer *tapped;
 @property (nonatomic) UIBarButtonItem *connectButton;
 @property (nonatomic) UIBarButtonItem *reconnectButton;
+@property (nonatomic) UILabel *lyricLabel;
  
 @property (nonatomic) QPlayAutoListItem *rootItem;
 @property (nonatomic) QPlayAutoListItem *currentSong;
@@ -46,6 +47,7 @@
 @property (nonatomic) QPlayAutoSearchType lastSearchType;
 @property (nonatomic) BOOL sliderDragged;
 @property (nonatomic) NSInteger currentPageIndex;
+@property (nonatomic) QPlayAutoLyric *currentLyric;
 @end
 
 @implementation MainViewController
@@ -191,6 +193,11 @@
     [self.similarButton setContentHuggingPriority:UILayoutPriorityRequired forAxis:UILayoutConstraintAxisHorizontal];
     [self setupRightMenu];
     
+    self.lyricLabel = [[UILabel alloc] init];
+    self.lyricLabel.textAlignment = NSTextAlignmentCenter;
+    self.lyricLabel.font = [UIFont systemFontOfSize:14 weight:UIFontWeightSemibold];
+    self.lyricLabel.textColor = UIColor.redColor;
+    
     [self.view addSubview:self.bottomView];
     [self.view addSubview:self.tableView];
     [self.view addSubview:self.playButton];
@@ -206,6 +213,7 @@
     [self.view addSubview:self.singerLabel];
     [self.view addSubview:self.assenceSegmentedControl];
     [self.view addSubview:self.similarButton];
+    [self.view addSubview:self.lyricLabel];
     
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardDidShow:) name:UIKeyboardDidShowNotification object:nil];
     [[NSNotificationCenter defaultCenter] addObserver:self selector:@selector(keyboardWillHide:) name:UIKeyboardWillHideNotification object:nil];
@@ -240,18 +248,41 @@
             }
         }];
     }];
-    UIMenu *menu = [UIMenu menuWithTitle:@"" children:@[action1, action2,action3,action4]];
+    UIAction *action5 = [UIAction actionWithTitle:@"通过SongId播歌" image:nil identifier:nil handler:^(__kindof UIAction * _Nonnull action) {
+        UIAlertController *vc = [UIAlertController alertControllerWithTitle:@"通过SongId播歌" message:@"请输入songId" preferredStyle:UIAlertControllerStyleAlert];
+        [vc addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
+            
+        }];
+        [vc addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
+        [vc addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
+            if(vc.textFields.firstObject.text.length){
+                QPlayAutoListItem *item = [[QPlayAutoListItem alloc] init];
+                item.ID = vc.textFields.firstObject.text;
+                item.Type = QPlayAutoListItemType_Song;
+                [QPlayAutoSDK playAtIndex:@[item] playIndex:0 completion:^(NSInteger errorCode) {
+                    [self showAlertWithContent:[NSString stringWithFormat:@"errorCode(%ld)",(long)errorCode]];
+                }];
+            }
+        }]];
+        [self presentViewController:vc animated:YES completion:nil];
+    }];
+    UIMenu *menu = [UIMenu menuWithTitle:@"" children:@[action1, action2,action3,action4,action5]];
     self.navigationItem.rightBarButtonItem = [[UIBarButtonItem alloc] initWithImage:[[UIImage systemImageNamed:@"ellipsis" withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:20 weight:UIImageSymbolWeightRegular]] imageWithTintColor:UIColor.orangeColor renderingMode:UIImageRenderingModeAlwaysOriginal] menu:menu];
 }
 
 - (void)setupConstraints {
     [self.tableView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.leading.trailing.top.equalTo(self.view);
-        make.bottom.mas_equalTo(self.bottomView.mas_top);
     }];
     [self.bottomView mas_makeConstraints:^(MASConstraintMaker *make) {
         make.bottom.leading.trailing.equalTo(self.view);
         make.height.mas_equalTo(self.view.mas_height).multipliedBy(0.24);
+    }];
+    [self.lyricLabel mas_makeConstraints:^(MASConstraintMaker *make) {
+        make.leading.trailing.equalTo(self.view);
+        make.bottom.mas_equalTo(self.bottomView.mas_top);
+        make.top.mas_equalTo(self.tableView.mas_bottom);
+        make.height.mas_equalTo(30);
     }];
     [self.playButton mas_makeConstraints:^(MASConstraintMaker *make) {
         make.centerX.mas_equalTo(self.view);
@@ -343,6 +374,7 @@
 
 - (void)resetContent
 {
+    self.currentLyric = nil;
     self.currentPageIndex = 0;
     self.lastSearchKeyWord = nil;
     self.rootItem = [[QPlayAutoListItem alloc] init];
@@ -351,6 +383,7 @@
     self.currentItem = self.rootItem;
     self.songLabel.text = nil;
     self.singerLabel.text = nil;
+    self.lyricLabel.text = nil;
 }
 
 #pragma mark - QPlayAutoSDKDelegate
@@ -366,6 +399,11 @@
         self.slider.maximumValue = duration;
         self.slider.value = progress;
         self.beginTimeLabel.text = [self formatDuration:progress];
+    }
+    if(self.currentLyric && [self.currentLyric.songId isEqualToString:song.ID]){
+        self.lyricLabel.text = [self.currentLyric sentenceAtTime:progress];
+    }else {
+        self.lyricLabel.text = nil;
     }
 }
 
@@ -411,6 +449,7 @@
 }
 
 - (void)onQPlayAutoPlayStateChanged:(QPlayAutoPlayState)playState song:(QPlayAutoListItem *)song position:(NSInteger)position {
+    NSLog(@"state change:(%lu)",(unsigned long)playState);
     switch (playState) {
         case QPlayAutoPlayState_Stop:
             [self.playButton setImage:[[UIImage systemImageNamed:@"play.circle" withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:45 weight:UIImageSymbolWeightRegular]] imageWithTintColor:UIColor.blackColor renderingMode:UIImageRenderingModeAlwaysOriginal] forState:UIControlStateNormal];
@@ -510,21 +549,6 @@
     }
 }
 
-- (void)lyricButtonPressed:(UIButton *)sender {
-    QPlayAutoListItem *item = [self.currentItem.items objectAtIndex:sender.tag];
-    [self.indicatorView startAnimating];
-    __weak __typeof(self)weakSelf = self;
-    [QPlayAutoSDK requestLyricWithSongId:item.ID completion:^(NSInteger errorCode, NSString * _Nullable lyrics) {
-        __strong __typeof(weakSelf)strongSelf = weakSelf;
-        [strongSelf.indicatorView stopAnimating];
-        if(lyrics.length) {
-            [strongSelf showAlertWithContent:lyrics];
-        } else {
-            [strongSelf showAlertWithContent:[NSString stringWithFormat:@"获取歌词失败(%@)",item.Name]];
-        }
-    }];
-}
-
 - (void)onSliderValChanged:(UISlider*)slider forEvent:(UIEvent*)event {
     UITouch *touchEvent = [[event allTouches] anyObject];
     switch (touchEvent.phase) {
@@ -547,7 +571,7 @@
     if([QPlayAutoSDK isConnected] && self.currentSong){
         [self.indicatorView startAnimating];
         __weak __typeof(self)weakSelf = self;
-        [QPlayAutoSDK requestSimilarSongWithId:self.currentSong.ID completion:^(NSInteger errorCode, NSArray<QPlayAutoListItem *> * _Nullable items) {
+        [QPlayAutoSDK requestSimilarWithSong:self.currentSong completion:^(NSInteger errorCode, NSArray<QPlayAutoListItem *> * _Nullable items) {
             __strong __typeof(weakSelf)strongSelf = weakSelf;
             [strongSelf.indicatorView stopAnimating];
             if(items.count){
@@ -640,8 +664,6 @@
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     MainTableCell *cell = (MainTableCell *)[tableView dequeueReusableCellWithIdentifier:@"MainTableCell" forIndexPath:indexPath];
     QPlayAutoListItem *listItem = [self.currentItem.items objectAtIndex:indexPath.row];
-    [cell.lyricButton addTarget:self action:@selector(lyricButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
-    cell.lyricButton.tag = indexPath.row;
     [cell updateWithItem:listItem];
     return cell;
 }
@@ -690,7 +712,6 @@
 }
 
 - (void)updateUIWithSong:(QPlayAutoListItem *)song {
-    self.currentSong = song;
     if(song.CoverUri.length){
         [self.coverImageView sd_setImageWithURL:[NSURL URLWithString:song.CoverUri]];
     }
@@ -700,6 +721,18 @@
     self.endTimeLabel.text = [self formatDuration:song.Duration];
     UIImage *loveImage = [[UIImage systemImageNamed:song.isFav?@"heart.fill":@"heart" withConfiguration:[UIImageSymbolConfiguration configurationWithPointSize:23 weight:UIImageSymbolWeightRegular]] imageWithTintColor:song.isFav?UIColor.redColor:UIColor.systemTealColor renderingMode:UIImageRenderingModeAlwaysOriginal];
     [self.loveButton setImage:loveImage forState:UIControlStateNormal];
+    if([song.ID isEqualToString:self.currentSong.ID] == NO) {
+        __weak __typeof(self)weakSelf = self;
+        [QPlayAutoSDK requestLyricWithSong:song completion:^(NSInteger errorCode, QPlayAutoLyric * _Nullable lyric) {
+            __strong __typeof(weakSelf)strongSelf = weakSelf;
+            if(lyric){
+                strongSelf.currentLyric = lyric;
+            }else {
+                [self showAlertWithContent:[NSString stringWithFormat:@"%ld",(long)errorCode]];
+            }
+        }];
+    }
+    self.currentSong = song;
 }
 
 - (NSString *)formatDuration:(NSInteger)seconds {

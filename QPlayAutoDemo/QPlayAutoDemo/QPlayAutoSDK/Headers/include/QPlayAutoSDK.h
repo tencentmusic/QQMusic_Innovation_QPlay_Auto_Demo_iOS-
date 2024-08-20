@@ -115,7 +115,7 @@ extern NSString const * QPlayAutoSDKVersion;
 /// @param block 回调
 + (NSInteger)setAssenceMode:(QPlayAutoAssenceMode)assencceMode callback:(QPlayAutoRequestFinishBlock _Nullable )block;
 
-/// 收藏/取消收藏
+/// 收藏/取消收藏(歌曲id 歌曲当前收藏状态 必须)
 /// @param song 歌曲
 /// @param completion 回调
 + (void)triggerFavoriteStateWithSong:(QPlayAutoListItem *)song completion:(void (^)(NSInteger errorCode,BOOL newFavorite))completion;
@@ -161,15 +161,15 @@ extern NSString const * QPlayAutoSDKVersion;
          completion:(QPlayAutoResultItemsBlock)completion;
 
 /// 相似歌曲
-/// @param songId 歌曲Id
+/// @param song 歌曲
 /// @param completion 回调
-+ (void)requestSimilarSongWithId:(NSString *)songId completion:(QPlayAutoResultItemsBlock)completion;
++ (void)requestSimilarWithSong:(QPlayAutoListItem *)song completion:(QPlayAutoResultItemsBlock)completion;
 
 
 /// 查询歌词
-/// @param songId 歌曲Id
+/// @param song 歌曲
 /// @param completion 回调
-+ (void)requestLyricWithSongId:(NSString *)songId completion:(void (^)(NSInteger errorCode,NSString *_Nullable lyrics))completion;
++ (void)requestLyricWithSong:(QPlayAutoListItem *)song completion:(void (^)(NSInteger errorCode,QPlayAutoLyric *_Nullable lyric))completion;
 
 
 /// 获取特定歌曲列表

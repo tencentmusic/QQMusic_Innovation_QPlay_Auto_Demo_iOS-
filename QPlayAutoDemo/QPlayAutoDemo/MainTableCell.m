@@ -35,7 +35,7 @@
 
 - (void)updateWithItem:(QPlayAutoListItem *)item {
     self.titleLabel.text = item.Name;
-    self.lyricButton.hidden = !item.isSong;
+    self.lyricButton.hidden = YES;
     self.vipLabel.hidden = !item.isSong;
     self.tryListenLabel.hidden = !item.isSong;
     self.orginalLabel.hidden = !item.isSong;

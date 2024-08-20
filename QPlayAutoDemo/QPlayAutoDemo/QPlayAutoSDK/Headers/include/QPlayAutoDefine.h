@@ -41,17 +41,19 @@ typedef NS_ENUM(NSUInteger, QPlayAutoError)
     QPlayAuto_LoginError=110,                   //无法读取,没有登录
     QPlayAuto_PcmRepeat=111,                    //PCM 请求重复
     QPlayAuto_NoPermission=112,                 //没有权限
-    QPlayAuto_NeedBuy = 113,                    //无法播放，需要购买(数字专辑)
-    QPlayAuto_NotSupportFormat=114,             //无法播放，不支持格式
+    QPlayAuto_NeedBuy = 113,                    //无法播放(数字专辑)
+    QPlayAuto_NotSupportFormat=114,             //无法播放(不支持格式)
     QPlayAuto_NeedAuth=115,                     //需要授权
-    QPlayAuto_NeedVIP = 116,                    //无法播放，需要购买VIP
+    QPlayAuto_NeedVIP = 116,                    //无法播放(需要购买VIP)
     QPlayAuto_TryListen = 117,                  //试听歌曲，购买听完整版
-    QPlayAuto_TrafficAlert = 118,               //无法播放 流量弹窗阻断
-    QPlayAuto_OnlyWifi     = 119,               //无法播放 仅Wifi弹窗阻断
+    QPlayAuto_TrafficAlert = 118,               //无法播放(流量弹窗阻断)
+    QPlayAuto_OnlyWifi     = 119,               //无法播放(仅Wifi弹窗阻断)
     QPlayAuto_AlreadyConnected=120,             //已经连接车机
-    QPlayAuto_SongNotMatch=121,                 //歌曲不匹配
+    QPlayAuto_SeekError = 121,                  //拖拽进度错误
+    QPlayAuto_NoListenRight = 122,              //无法播放(无版权)
+    QPlayAuto_SongNotMatch=123,                 //歌曲不匹配
+    QPlayAuto_Disconnect=124,                   //连接已断开
 };
-
 
 /**
  QPlayAuto连接状态
@@ -183,6 +185,8 @@ typedef NS_ENUM(NSInteger, QPlayAutoVipState)
 @property (nonatomic,readonly) BOOL isSVIP;     //SVIP歌曲
 
 - (instancetype)initWithDictionary:(NSDictionary*)dict;
+- (instancetype)initSongWithId:(NSString *)identifier isFav:(BOOL)isFav;
+- (instancetype)initWithId:(NSString *)identifier type:(QPlayAutoListItemType)type;
 
 //是否是根节点
 - (BOOL)isRoot;
@@ -208,6 +212,22 @@ typedef void (^QPlayAutoRequestFinishBlock)(BOOL success, NSDictionary *dict);
 /** 请求类型 */
 @property (nonatomic, assign) int type;
 
+@end
+
+@interface QPlayAutoSentence : NSObject <NSCoding>
+@property (nonatomic, assign) NSInteger    startTime;
+@property (nonatomic, assign) NSInteger    duration;
+@property (nonatomic, strong) NSString     *text;
+@end
+
+@interface QPlayAutoLyric : NSObject <NSCoding>
+@property(nonatomic,assign) BOOL isTxtType;//歌词是不是纯文本的歌词，没有时间标记
+@property(nonatomic,strong) NSString *songId;
+@property(nonatomic,strong) NSString *songName;
+@property(nonatomic,strong) NSString *singerName;
+@property(nonatomic,strong) NSString *albumName;
+@property(nonatomic,strong) NSArray<QPlayAutoSentence *> *sentences;
+- (NSString *)sentenceAtTime:(NSTimeInterval)time;
 @end
 
 
