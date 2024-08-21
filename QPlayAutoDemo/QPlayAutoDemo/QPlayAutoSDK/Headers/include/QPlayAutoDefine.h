@@ -171,6 +171,7 @@ typedef NS_ENUM(NSInteger, QPlayAutoVipState)
 @property (nonatomic,assign) NSInteger totalCount;  //总数
 @property (nonatomic,assign) BOOL isFav; //是否收藏
 @property (nonatomic,assign) BOOL isOrigin; //是否原唱
+@property (nonatomic,assign) BOOL isNoAudioSource; //无音源
 @property (nonatomic,strong) NSMutableArray<QPlayAutoListItem*> *items; //子列表
 @property (nonatomic,weak)  QPlayAutoListItem *parentItem;      //父节点
 
@@ -218,6 +219,8 @@ typedef void (^QPlayAutoRequestFinishBlock)(BOOL success, NSDictionary *dict);
 @property (nonatomic, assign) NSInteger    startTime;
 @property (nonatomic, assign) NSInteger    duration;
 @property (nonatomic, strong) NSString     *text;
+@property (nonatomic, readonly) NSString *startTimeText;
+@property (nonatomic, readonly) NSString *endTimeText;
 @end
 
 @interface QPlayAutoLyric : NSObject <NSCoding>
@@ -226,6 +229,7 @@ typedef void (^QPlayAutoRequestFinishBlock)(BOOL success, NSDictionary *dict);
 @property(nonatomic,strong) NSString *songName;
 @property(nonatomic,strong) NSString *singerName;
 @property(nonatomic,strong) NSString *albumName;
+@property(nonatomic,readonly) NSString *text;//所有歌词文本
 @property(nonatomic,strong) NSArray<QPlayAutoSentence *> *sentences;
 - (NSString *)sentenceAtTime:(NSTimeInterval)time;
 @end

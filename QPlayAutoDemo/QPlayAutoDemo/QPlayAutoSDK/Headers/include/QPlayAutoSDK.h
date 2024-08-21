@@ -115,10 +115,11 @@ extern NSString const * QPlayAutoSDKVersion;
 /// @param block 回调
 + (NSInteger)setAssenceMode:(QPlayAutoAssenceMode)assencceMode callback:(QPlayAutoRequestFinishBlock _Nullable )block;
 
-/// 收藏/取消收藏(歌曲id 歌曲当前收藏状态 必须)
+/// 收藏/取消收藏(歌曲id)
 /// @param song 歌曲
+/// @param isFavorite 收藏/取消收藏
 /// @param completion 回调
-+ (void)triggerFavoriteStateWithSong:(QPlayAutoListItem *)song completion:(void (^)(NSInteger errorCode,BOOL newFavorite))completion;
++ (void)setFavoriteStateWithSong:(QPlayAutoListItem *)song isFavorite:(BOOL)isFavorite completion:(void (^)(NSInteger errorCode))completion;
 
 /// 播放歌曲
 /// @param songList 歌曲列表

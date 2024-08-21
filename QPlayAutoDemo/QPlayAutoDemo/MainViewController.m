@@ -251,7 +251,7 @@
     UIAction *action5 = [UIAction actionWithTitle:@"通过SongId播歌" image:nil identifier:nil handler:^(__kindof UIAction * _Nonnull action) {
         UIAlertController *vc = [UIAlertController alertControllerWithTitle:@"通过SongId播歌" message:@"请输入songId" preferredStyle:UIAlertControllerStyleAlert];
         [vc addTextFieldWithConfigurationHandler:^(UITextField * _Nonnull textField) {
-            
+            textField.text = @"269707426|1";
         }];
         [vc addAction:[UIAlertAction actionWithTitle:@"取消" style:UIAlertActionStyleCancel handler:nil]];
         [vc addAction:[UIAlertAction actionWithTitle:@"确定" style:UIAlertActionStyleDefault handler:^(UIAlertAction * _Nonnull action) {
@@ -549,6 +549,21 @@
     }
 }
 
+- (void)lyricButtonPressed:(UIButton *)sender {
+    QPlayAutoListItem *item = [self.currentItem.items objectAtIndex:sender.tag];
+    [self.indicatorView startAnimating];
+    __weak __typeof(self)weakSelf = self;
+    [QPlayAutoSDK requestLyricWithSong:item completion:^(NSInteger errorCode, QPlayAutoLyric * _Nullable lyric) {
+        __strong __typeof(weakSelf)strongSelf = weakSelf;
+        [strongSelf.indicatorView stopAnimating];
+        if(lyric) {
+            [strongSelf showAlertWithContent:lyric.text];
+        } else {
+            [strongSelf showAlertWithContent:[NSString stringWithFormat:@"获取歌词失败(%@)",item.Name]];
+        }
+    }];
+}
+
 - (void)onSliderValChanged:(UISlider*)slider forEvent:(UIEvent*)event {
     UITouch *touchEvent = [[event allTouches] anyObject];
     switch (touchEvent.phase) {
@@ -629,7 +644,7 @@
 
 - (void)loveButtonPressed {
     if(self.currentSong){
-        [QPlayAutoSDK triggerFavoriteStateWithSong:self.currentSong completion:^(NSInteger errorCode, BOOL newFavorite) {
+        [QPlayAutoSDK setFavoriteStateWithSong:self.currentSong isFavorite:!self.currentSong.isFav completion:^(NSInteger errorCode) {
             if(errorCode != 0){
                 [self showAlertWithContent:@"收藏/取消收藏 失败"];
             }
@@ -664,6 +679,8 @@
 - (UITableViewCell *)tableView:(UITableView *)tableView cellForRowAtIndexPath:(NSIndexPath *)indexPath {
     MainTableCell *cell = (MainTableCell *)[tableView dequeueReusableCellWithIdentifier:@"MainTableCell" forIndexPath:indexPath];
     QPlayAutoListItem *listItem = [self.currentItem.items objectAtIndex:indexPath.row];
+    [cell.lyricButton addTarget:self action:@selector(lyricButtonPressed:) forControlEvents:UIControlEventTouchUpInside];
+    cell.lyricButton.tag = indexPath.row;
     [cell updateWithItem:listItem];
     return cell;
 }
