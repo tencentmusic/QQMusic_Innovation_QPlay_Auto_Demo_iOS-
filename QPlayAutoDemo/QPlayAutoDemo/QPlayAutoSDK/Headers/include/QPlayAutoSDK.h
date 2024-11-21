@@ -56,6 +56,8 @@ extern NSString const * QPlayAutoSDKVersion;
 + (QPlayAutoListItem *_Nullable)currentSong;
 /// 当前播放状态
 + (QPlayAutoPlayState)currentPlayState;
+/// 当前播放进度
++ (NSTimeInterval)currentProgress;
 /// QQ音乐是否登录
 + (BOOL)isLoginOK;
 ///  检查QQ音乐是否已安装
